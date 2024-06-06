@@ -1,0 +1,31 @@
+<html data-theme="aqua">
+	<head>
+		<title>SwissWaterTemps</title>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1"
+		/>
+		<script src="https://unpkg.com/htmx.org@1.9.4"></script>
+		<link
+			href="https://cdn.jsdelivr.net/npm/daisyui@4.6.2/dist/full.min.css"
+			rel="stylesheet"
+			type="text/css"
+		/>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="flex justify-center">
+		<main class="max-w-screen-sm w-full m-3">
+			<div class="navbar bg-base-100">
+				<div class="flex-1">
+					<a
+						class="btn btn-ghost text-xl"
+						hx-get="/home"
+						hx-target="#container"
+						>SwissWaterTemps</a
+					>
+				</div>
+			</div>
+		</main>
+	</body>
+</html>
