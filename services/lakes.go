@@ -10,7 +10,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func getLakeTemperatures() []models.TemperatureRecord {
+func GetLakeTemperatures() []models.TemperatureRecord {
 	url := "https://www.boot24.ch/chde/service/temperaturen/"
 
 	var records []models.TemperatureRecord

@@ -1,0 +1,16 @@
+<table class="table">
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Temperatur</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{range .records}}
+		<tr>
+			<td>{{.Name}}</td>
+			<td>{{.Temperature}}</td>
+		</tr>
+		{{end}}
+	</tbody>
+</table>

@@ -10,7 +10,7 @@ import (
 	"github.com/999mattia/SwissWaterTemps/models"
 )
 
-func getRiverTemperatures() []models.TemperatureRecord {
+func GetRiverTemperatures() []models.TemperatureRecord {
 	url := "https://www.hydrodaten.admin.ch/web-hydro-maps/hydro_sensor_temperature.geojson"
 
 	resp, err := http.Get(url)
