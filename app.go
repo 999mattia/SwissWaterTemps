@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/999mattia/SwissWaterTemps/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
 )
@@ -12,6 +13,8 @@ func main() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Render("index", fiber.Map{})
 	})
+
+	services.GetAllTemperatures()
 
 	app.Listen(":3000")
 }
