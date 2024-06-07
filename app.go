@@ -14,7 +14,8 @@ func main() {
 		return c.Render("index", fiber.Map{})
 	})
 
-	services.GetAllTemperatures()
+	services.GetRiverTemperatures()
+	services.GetLakeTemperatures()
 
 	app.Listen(":3000")
 }

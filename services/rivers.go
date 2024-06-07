@@ -30,7 +30,7 @@ func getRiverTemperatures() []models.TemperatureRecord {
 		panic(err)
 	}
 
-	records, err := CastGeoJSONToTemperatureRecords(data)
+	records, err := castGeoJSONToTemperatureRecords(data)
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func getRiverTemperatures() []models.TemperatureRecord {
 	return records
 }
 
-func CastGeoJSONToTemperatureRecords(geoJSON models.GeoJSONFile) ([]models.TemperatureRecord, error) {
+func castGeoJSONToTemperatureRecords(geoJSON models.GeoJSONFile) ([]models.TemperatureRecord, error) {
 	var records []models.TemperatureRecord
 
 	for _, feature := range geoJSON.Features {
