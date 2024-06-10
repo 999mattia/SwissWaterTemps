@@ -1,0 +1,35 @@
+<div class="flex flex-col w-full border-opacity-50">
+	<table class="table">
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Temperatur</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .lakeTemperatures}}
+			<tr>
+				<td>{{.Name}}</td>
+				<td>{{.Temperature}}</td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
+	<div class="divider"></div>
+	<table class="table">
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Temperatur</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .riverTemperatures}}
+			<tr>
+				<td>{{.Name}}</td>
+				<td>{{.Temperature}}</td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
+</div>

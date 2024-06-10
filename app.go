@@ -14,18 +14,10 @@ func main() {
 		return c.Render("index", fiber.Map{})
 	})
 
-	app.Get("/main", func(c *fiber.Ctx) error {
-		return c.Render("main", fiber.Map{})
-	})
-
-	app.Get("/rivers", func(c *fiber.Ctx) error {
-		records := services.GetRiverTemperatures()
-		return c.Render("rivers", fiber.Map{"records": records})
-	})
-
-	app.Get("/lakes", func(c *fiber.Ctx) error {
-		records := services.GetLakeTemperatures()
-		return c.Render("lakes", fiber.Map{"records": records})
+	app.Get("/temperatures", func(c *fiber.Ctx) error {
+		lakeTemperatures := services.GetLakeTemperatures()
+		riverTemperatures := services.GetRiverTemperatures()
+		return c.Render("temperatures", fiber.Map{"lakeTemperatures": lakeTemperatures, "riverTemperatures": riverTemperatures})
 	})
 
 	app.Listen(":3000")
