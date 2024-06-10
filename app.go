@@ -31,5 +31,7 @@ func main() {
 		return c.Render("temperatures", fiber.Map{"lakeTemperatures": lakeTemperatures, "riverTemperatures": riverTemperatures})
 	})
 
+	app.Static("/assets", "./assets")
+
 	app.Listen(":3000")
 }
