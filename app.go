@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/999mattia/SwissWaterTemps/models"
 	"github.com/999mattia/SwissWaterTemps/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
@@ -15,8 +16,18 @@ func main() {
 	})
 
 	app.Get("/temperatures", func(c *fiber.Ctx) error {
-		lakeTemperatures := services.GetLakeTemperatures()
-		riverTemperatures := services.GetRiverTemperatures()
+		searchQuery := c.Query("search")
+
+		var lakeTemperatures, riverTemperatures []models.TemperatureRecord
+
+		if searchQuery != "" {
+			lakeTemperatures = services.GetLakeTemperatures(searchQuery)
+			riverTemperatures = services.GetRiverTemperatures(searchQuery)
+		} else {
+			lakeTemperatures = services.GetLakeTemperatures()
+			riverTemperatures = services.GetRiverTemperatures()
+		}
+
 		return c.Render("temperatures", fiber.Map{"lakeTemperatures": lakeTemperatures, "riverTemperatures": riverTemperatures})
 	})
 

@@ -4,35 +4,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/999mattia/SwissWaterTemps/models"
 )
 
-func GetRiverTemperatures() []models.TemperatureRecord {
+func GetRiverTemperatures(searchQuery ...string) []models.TemperatureRecord {
 	url := "https://www.hydrodaten.admin.ch/web-hydro-maps/hydro_sensor_temperature.geojson"
 
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	var data models.GeoJSONFile
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	records, err := castGeoJSONToTemperatureRecords(data)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
+	}
+
+	if len(searchQuery) > 0 && searchQuery[0] != "" {
+		query := strings.ToLower(searchQuery[0])
+		filteredRecords := []models.TemperatureRecord{}
+		for _, record := range records {
+			if strings.Contains(strings.ToLower(record.Name), query) {
+				filteredRecords = append(filteredRecords, record)
+			}
+		}
+		return filteredRecords
 	}
 
 	return records
@@ -42,12 +55,10 @@ func castGeoJSONToTemperatureRecords(geoJSON models.GeoJSONFile) ([]models.Tempe
 	var records []models.TemperatureRecord
 
 	for _, feature := range geoJSON.Features {
-		// Parse the LastValue to float64
 		temp, err := strconv.ParseFloat(feature.Properties.LastValue, 64)
 		if err != nil {
-			// Handle the error, maybe continue with the next feature or return the error
 			fmt.Printf("Error parsing temperature for %s: %v\n", feature.Properties.Label, err)
-			continue // or return nil, err
+			continue
 		}
 
 		record := models.TemperatureRecord{
