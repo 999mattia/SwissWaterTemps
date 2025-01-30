@@ -21,6 +21,9 @@
 go.work
 go.work.sum
 
-/tmp
+tmp/
+/web/tmp/
 
 developer_key
+
+.DS_Store
