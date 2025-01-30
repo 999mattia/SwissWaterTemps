@@ -30,6 +30,6 @@ jobs:
               uses: docker/build-push-action@v2
               with:
                   context: .
-                  file: ./Dockerfile
+                  file: web/Dockerfile
                   push: true
                   tags: ghcr.io/999mattia/swisswatertemps:latest
