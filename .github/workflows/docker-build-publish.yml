@@ -29,7 +29,7 @@ jobs:
             - name: Build and push Docker image
               uses: docker/build-push-action@v2
               with:
-                  context: web
-                  file: Dockerfile
+                  context: .
+                  file: web/Dockerfile
                   push: true
                   tags: ghcr.io/999mattia/swisswatertemps:latest
