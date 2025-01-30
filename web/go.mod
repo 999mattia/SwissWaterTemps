@@ -3,12 +3,15 @@ module github.com/999mattia/SwissWaterTemps
 go 1.22.1
 
 require (
-	github.com/PuerkitoBio/goquery v1.9.2 // indirect
+	github.com/PuerkitoBio/goquery v1.9.2
+	github.com/gofiber/fiber/v2 v2.52.4
+	github.com/gofiber/template/html/v2 v2.1.1
+)
+
+require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
-	github.com/gofiber/fiber/v2 v2.52.4 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
-	github.com/gofiber/template/html/v2 v2.1.1 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
