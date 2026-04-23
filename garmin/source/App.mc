@@ -55,7 +55,7 @@ class App extends Application.AppBase {
     }
 
     function makeRequests() as Void {
-            var url = "https://swisswatertemps.mattiag.ch/api/temperatures";
+            var url = "https://swt.mattiag.ch/api/temperatures";
 
             var params = {};
 
