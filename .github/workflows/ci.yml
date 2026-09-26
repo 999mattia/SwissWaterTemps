@@ -33,7 +33,7 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: web/go.mod
           cache-dependency-path: web/go.sum
