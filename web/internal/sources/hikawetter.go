@@ -55,7 +55,8 @@ func parseHikaWetter(body []byte) ([]station.Station, error) {
 		Kind:        station.Lake,
 		Temperature: *temp,
 		Source:      "hikawetter",
+		Lat:         ptr(46.965),
+		Lon:         ptr(7.36),
 	}
-	s.Lat, s.Lon = lakeCoordinates(s.Name)
 	return []station.Station{s}, nil
 }

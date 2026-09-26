@@ -4,6 +4,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -12,22 +13,33 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/999mattia/SwissWaterTemps/internal/station"
 )
 
-type SnapshotFunc func() station.Snapshot
-
-type Server struct {
-	snapshot SnapshotFunc
-	static   fs.FS
+// Data is the current station data, see store.Store.
+type Data interface {
+	Snapshot() station.Snapshot
+	Station(id string) (station.Station, bool)
 }
 
-func New(snapshot SnapshotFunc, static fs.FS) http.Handler {
-	s := &Server{snapshot: snapshot, static: static}
+// SeriesFunc returns the stored readings of a station between from and to.
+type SeriesFunc func(ctx context.Context, stationID string, from, to time.Time) ([]station.Point, error)
+
+type Server struct {
+	data   Data
+	series SeriesFunc
+	static fs.FS
+}
+
+// New builds the HTTP handler. series may be nil when no history is stored.
+func New(data Data, series SeriesFunc, static fs.FS) http.Handler {
+	s := &Server{data: data, series: series, static: static}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/stations", s.stations)
+	mux.HandleFunc("GET /api/v1/stations/{id}/history", s.stationHistory)
 	mux.HandleFunc("GET /api/temperatures", s.legacyTemperatures)
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +51,7 @@ func New(snapshot SnapshotFunc, static fs.FS) http.Handler {
 }
 
 func (s *Server) stations(w http.ResponseWriter, r *http.Request) {
-	snap := s.snapshot()
+	snap := s.data.Snapshot()
 	etag := `"` + strconv.FormatInt(snap.UpdatedAt.UnixNano(), 36) + `"`
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "public, max-age=60")
@@ -50,6 +62,50 @@ func (s *Server) stations(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, r, snap)
 }
 
+type historyResponse struct {
+	Station  station.Station `json:"station"`
+	History  []station.Point `json:"history"`
+	Forecast []station.Point `json:"forecast"`
+}
+
+// stationHistory returns a station with its stored readings of the last
+// ?days= days (default 7, at most 730) and its forecast, if any.
+func (s *Server) stationHistory(w http.ResponseWriter, r *http.Request) {
+	st, ok := s.data.Station(r.PathValue("id"))
+	if !ok {
+		http.Error(w, "station not found", http.StatusNotFound)
+		return
+	}
+
+	days := 7
+	if v := r.URL.Query().Get("days"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			http.Error(w, "invalid days", http.StatusBadRequest)
+			return
+		}
+		days = min(n, 730)
+	}
+
+	res := historyResponse{Station: st, History: []station.Point{}, Forecast: st.Forecast}
+	if res.Forecast == nil {
+		res.Forecast = []station.Point{}
+	}
+	if s.series != nil {
+		now := time.Now()
+		points, err := s.series(r.Context(), st.ID, now.Add(-time.Duration(days)*24*time.Hour), now)
+		if err != nil {
+			slog.Error("reading history", "station", st.ID, "error", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		res.History = points
+	}
+
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	writeJSON(w, r, res)
+}
+
 type legacyRecord struct {
 	Name        string  `json:"name"`
 	Temperature float64 `json:"temperature"`
@@ -58,7 +114,7 @@ type legacyRecord struct {
 // legacyTemperatures keeps the v1 response shape used by the Garmin watch app.
 func (s *Server) legacyTemperatures(w http.ResponseWriter, r *http.Request) {
 	lakes, rivers := []legacyRecord{}, []legacyRecord{}
-	for _, st := range s.snapshot().Stations {
+	for _, st := range s.data.Snapshot().Stations {
 		rec := legacyRecord{Name: st.Name, Temperature: st.Temperature}
 		if st.Kind == station.Lake {
 			lakes = append(lakes, rec)

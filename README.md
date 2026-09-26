@@ -6,7 +6,10 @@ Add to Home Screen**.
 
 ## Features
 
--   Lakes and rivers with the time of each measurement and the 24 h min/max range
+-   Lakes and rivers with the time of each measurement, the 24 h min/max range and
+    the change over the last 24 hours
+-   A page per station with a 7-day, 30-day or 1-year chart; lakes also show a
+    5-day forecast
 -   Instant search (ignores accents, so "zurich" finds "Zürichsee")
 -   Filter by lakes or rivers, sort by name, warmest, coldest or nearest
 -   Favourites pinned to the top
@@ -20,8 +23,9 @@ Add to Home Screen**.
 ```
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
-  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter)
+  internal/sources/  one fetcher per data source (BAFU, Alplakes, HiKa Wetter)
   internal/store/    polls all sources in the background and caches the result
+  internal/history/  SQLite database with the readings and the last state of each source
   internal/server/   JSON API and static file serving
 garmin/     Garmin Connect IQ watch app
 ```
@@ -31,11 +35,33 @@ read the in-memory cache, so they never wait on the upstream sites. If a
 source fails, the server keeps that source's last good data and marks the
 source as not OK.
 
+### Data sources
+
+| Source | What | Notes |
+| --- | --- | --- |
+| [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur) | River temperatures, measured | GeoJSON, updated about every 10 minutes |
+| [Alplakes](https://www.alplakes.eawag.ch) (Eawag) | Lake surface temperatures, **modelled** with Simstrat, incl. a 5-day forecast | [API](https://alplakes-api.eawag.ch/docs), Apache 2.0; fetched at most hourly since the model runs daily |
+| [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
+
+Lake values are model output, not measurements; the app labels them as such.
+The Alplakes lake keys are mapped to German names and positions in
+`web/internal/sources/alplakes_lakes.go`; lakes Alplakes adds later are skipped
+until they are added there.
+
+### History
+
+Every reading is stored in hourly buckets in SQLite (`$DATA_DIR/swisswatertemps.db`)
+and kept for two years. The database also holds the last data of every source,
+so after a restart the app shows data immediately instead of waiting for the
+first fetch. If the directory isn't writable the app still runs, just without
+history, trends and restored state.
+
 ### API
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/v1/stations` | All stations with measurement time, 24 h range, coordinates, plus the status of every source |
+| `GET /api/v1/stations` | All stations with measurement time, 24 h range and change, coordinates, plus the status of every source |
+| `GET /api/v1/stations/{id}/history?days=7` | One station with its stored readings (hourly; daily averages beyond 31 days, at most 730 days) and its forecast |
 | `GET /api/temperatures` | Legacy format used by the Garmin app: `{lakeTemperatures, riverTemperatures}` with `{name, temperature}` |
 | `GET /healthz` | Liveness check |
 
@@ -45,6 +71,7 @@ source as not OK.
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP port |
 | `REFRESH_INTERVAL` | `10m` | How often the sources are fetched (Go duration) |
+| `DATA_DIR` | `data` (`/data` in Docker) | Where the history database is stored |
 
 ## Development
 
@@ -77,7 +104,7 @@ Or with Docker (built from the repository root):
 
 ```sh
 docker build -t swisswatertemps .
-docker run -p 3000:3000 swisswatertemps
+docker run -p 3000:3000 -v swisswatertemps-data:/data swisswatertemps
 ```
 
 The app icons in `frontend/public` are generated from `favicon.svg` with
@@ -85,7 +112,7 @@ The app icons in `frontend/public` are generated from `favicon.svg` with
 
 ## Disclaimer
 
-The data belongs to the BAFU (https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur), boot24 (https://www.boot24.ch/chde/service/temperaturen/) and HiKa Wetter (https://hikawetter.ch).
+The data belongs to the BAFU (https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur), Eawag / Alplakes (https://www.alplakes.eawag.ch) and HiKa Wetter (https://hikawetter.ch).
 Map tiles © swisstopo. This is a non-profit website, used for educational purposes.
 
 ## Garmin Watch App Installation

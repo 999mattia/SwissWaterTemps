@@ -55,6 +55,15 @@ export default defineConfig({
             },
           },
           {
+            urlPattern: ({ url }) => /^\/api\/v1\/stations\/[^/]+\/history$/.test(url.pathname),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'station-history',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
             urlPattern: ({ url }) => url.hostname === 'wmts.geo.admin.ch',
             handler: 'CacheFirst',
             options: {

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import StationCard from './components/StationCard.svelte';
+  import StationDetail from './components/StationDetail.svelte';
   import { fetchSnapshot } from './lib/api';
   import { detectLang, LANGS, translator, type Lang } from './lib/i18n';
   import { filterAndSort, stationDistance } from './lib/stations';
@@ -24,6 +25,29 @@
   let kind = $state<KindFilter>(load('swt:kind', 'all'));
   let sort = $state<SortKey>(load('swt:sort', 'name'));
   let view = $state<'list' | 'map'>(load('swt:view', 'list'));
+
+  // Minimal routing: "/" is the list or map, "/station/{id}" a station's page.
+  let path = $state(location.pathname);
+  const stationId = $derived(path.startsWith('/station/') ? decodeURIComponent(path.slice(9)) : null);
+  let listScroll = 0;
+
+  async function openStation(id: string) {
+    listScroll = window.scrollY;
+    history.pushState({ fromList: true }, '', `/station/${encodeURIComponent(id)}`);
+    path = location.pathname;
+    await tick();
+    window.scrollTo(0, 0);
+  }
+
+  function closeStation() {
+    // Opened from the list: go back so the browser/swipe history stays natural.
+    if (history.state?.fromList) {
+      history.back();
+      return;
+    }
+    history.replaceState(null, '', '/');
+    path = '/';
+  }
   let favourites = $state<string[]>(load('swt:favourites', []));
 
   let position = $state<Position | null>(null);
@@ -133,7 +157,16 @@
     };
     const onOffline = () => (online = false);
 
+    const onPopState = async () => {
+      path = location.pathname;
+      if (!stationId) {
+        await tick();
+        window.scrollTo(0, listScroll);
+      }
+    };
+
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('popstate', onPopState);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
@@ -141,6 +174,7 @@
       clearInterval(poll);
       inFlight?.abort();
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('popstate', onPopState);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
@@ -200,6 +234,7 @@
     </div>
   </div>
 
+  {#if !stationId}
   <div class="controls">
     <div class="search">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -237,6 +272,7 @@
 
     </div>
   </div>
+  {/if}
 </header>
 
 <main>
@@ -270,7 +306,18 @@
     <div class="notice">{tr.t('locationDenied')}</div>
   {/if}
 
-  {#if !snapshot}
+  {#if stationId}
+    <StationDetail
+      id={stationId}
+      initial={snapshot?.stations.find((s) => s.id === stationId)}
+      sources={snapshot?.sources ?? []}
+      {tr}
+      {now}
+      favourite={favouriteSet.has(stationId)}
+      onToggleFavourite={toggleFavourite}
+      onBack={closeStation}
+    />
+  {:else if !snapshot}
     <div class="empty">
       {#if loadFailed}
         <p>{tr.t('loadError')}</p>
@@ -282,7 +329,7 @@
     </div>
   {:else if view === 'map'}
     {#await import('./components/MapView.svelte') then { default: MapView }}
-      <MapView stations={visible} {tr} {now} position={sort === 'nearest' ? position : null} />
+      <MapView stations={visible} {tr} {now} position={sort === 'nearest' ? position : null} onOpen={openStation} />
     {/await}
     <p class="count">{visible.length} / {snapshot.stations.length}</p>
   {:else if visible.length === 0}
@@ -300,6 +347,7 @@
               distance={sort === 'nearest' ? stationDistance(station, position) : undefined}
               favourite
               onToggleFavourite={toggleFavourite}
+              onOpen={openStation}
             />
           {/each}
         </ul>
@@ -317,6 +365,7 @@
               distance={sort === 'nearest' ? stationDistance(station, position) : undefined}
               favourite={false}
               onToggleFavourite={toggleFavourite}
+              onOpen={openStation}
             />
           {/each}
         </ul>

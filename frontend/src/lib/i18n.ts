@@ -43,6 +43,28 @@ const de = {
   sourceCode: 'Quellcode auf GitHub',
   language: 'Sprache',
   installHint: 'Tipp: Über «Teilen» → «Zum Home-Bildschirm» als App installieren.',
+  back: 'Zurück',
+  modelled: 'Modell',
+  modelledHint: 'Modellierte Oberflächentemperatur (Simstrat, Eawag) – kein Messwert.',
+  measured: 'Messwert',
+  change24h: '{value}° in 24 h',
+  forecast: 'Prognose',
+  tomorrow: 'Morgen',
+  now: 'Jetzt',
+  days7: '7 Tage',
+  days30: '30 Tage',
+  days365: '1 Jahr',
+  noHistory: 'Noch keine Verlaufsdaten – sie werden ab jetzt gesammelt.',
+  historyError: 'Der Verlauf konnte nicht geladen werden.',
+  showTable: 'Daten als Tabelle',
+  date: 'Datum',
+  min: 'Min',
+  max: 'Max',
+  chartLabel: 'Temperaturverlauf von {name}',
+  source: 'Quelle',
+  notFound: 'Diese Messstelle gibt es nicht (mehr).',
+  details: 'Details zu {name}',
+  showDetails: 'Verlauf & Details',
   dismiss: 'Schliessen',
 };
 
@@ -88,6 +110,28 @@ const fr: Dict = {
   sourceCode: 'Code source sur GitHub',
   language: 'Langue',
   installHint: "Astuce : « Partager » → « Sur l'écran d'accueil » pour l'installer comme app.",
+  back: 'Retour',
+  modelled: 'Modèle',
+  modelledHint: 'Température de surface modélisée (Simstrat, Eawag) – pas une mesure.',
+  measured: 'Mesure',
+  change24h: '{value}° en 24 h',
+  forecast: 'Prévision',
+  tomorrow: 'Demain',
+  now: 'Maintenant',
+  days7: '7 jours',
+  days30: '30 jours',
+  days365: '1 an',
+  noHistory: "Pas encore d'historique – il est collecté dès maintenant.",
+  historyError: "Impossible de charger l'historique.",
+  showTable: 'Données sous forme de tableau',
+  date: 'Date',
+  min: 'Min',
+  max: 'Max',
+  chartLabel: 'Évolution de la température : {name}',
+  source: 'Source',
+  notFound: "Cette station n'existe pas (ou plus).",
+  details: 'Détails : {name}',
+  showDetails: 'Évolution & détails',
   dismiss: 'Fermer',
 };
 
@@ -130,6 +174,28 @@ const en: Dict = {
   sourceCode: 'Source code on GitHub',
   language: 'Language',
   installHint: 'Tip: use “Share” → “Add to Home Screen” to install it as an app.',
+  back: 'Back',
+  modelled: 'Model',
+  modelledHint: 'Modelled surface temperature (Simstrat, Eawag) – not a measurement.',
+  measured: 'Measurement',
+  change24h: '{value}° in 24 h',
+  forecast: 'Forecast',
+  tomorrow: 'Tomorrow',
+  now: 'Now',
+  days7: '7 days',
+  days30: '30 days',
+  days365: '1 year',
+  noHistory: 'No history yet – it is being collected from now on.',
+  historyError: 'The history could not be loaded.',
+  showTable: 'Data as a table',
+  date: 'Date',
+  min: 'Min',
+  max: 'Max',
+  chartLabel: 'Temperature history of {name}',
+  source: 'Source',
+  notFound: 'This station does not exist (anymore).',
+  details: 'Details for {name}',
+  showDetails: 'History & details',
   dismiss: 'Close',
 };
 
@@ -152,6 +218,11 @@ export function translator(lang: Lang) {
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
   const rel = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' });
+  const weekdayTime = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dayMonth = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric' });
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  const monthName = new Intl.DateTimeFormat(locale, { month: 'short' });
+  const fullDate = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' });
 
   return {
     locale,
@@ -161,6 +232,13 @@ export function translator(lang: Lang) {
     temp: (v: number) => temp.format(v),
     km: (v: number) => km.format(v),
     dateTime: (iso: string) => dateTime.format(new Date(iso)),
+    weekdayTime: (d: Date) => weekdayTime.format(d),
+    dayMonth: (d: Date) => dayMonth.format(d),
+    weekday: (d: Date) => weekday.format(d),
+    month: (d: Date) => monthName.format(d),
+    fullDate: (d: Date) => fullDate.format(d),
+    /** "+0.8" / "−1.2" with a proper minus sign. */
+    signed: (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${temp.format(Math.abs(v))}`,
     /** "vor 12 Min.", "vor 3 Std." … */
     ago(iso: string, now: number): string {
       const seconds = Math.round((Date.parse(iso) - now) / 1000);

@@ -2,6 +2,7 @@
   import type { Translator } from '../lib/i18n';
   import { isStale, temperatureHue } from '../lib/stations';
   import type { Station } from '../lib/types';
+  import Trend from './Trend.svelte';
 
   interface Props {
     station: Station;
@@ -10,9 +11,17 @@
     distance?: number;
     favourite: boolean;
     onToggleFavourite: (id: string) => void;
+    onOpen: (id: string) => void;
   }
 
-  let { station, tr, now, distance, favourite, onToggleFavourite }: Props = $props();
+  let { station, tr, now, distance, favourite, onToggleFavourite, onOpen }: Props = $props();
+
+  function open(e: MouseEvent) {
+    // Let the browser handle new-tab clicks.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    onOpen(station.id);
+  }
 
   const stale = $derived(isStale(station, now));
   const showWaterBody = $derived(
@@ -22,13 +31,21 @@
 
 <li class="card" class:stale>
   <div class="info">
-    <h3 class="name">{station.name}</h3>
+    <h3 class="name">
+      <a href="/station/{encodeURIComponent(station.id)}" onclick={open} aria-label={tr.t('details', { name: station.name })}
+        >{station.name}</a
+      >
+    </h3>
     <p class="meta">
       <span class="kind">{tr.t(station.kind)}</span>
+      {#if station.modelled}<span class="model" title={tr.t('modelledHint')}>{tr.t('modelled')}</span>{/if}
       {#if showWaterBody}<span>· {station.waterBody}</span>{/if}
       {#if distance != null}<span>· {tr.t('kmAway', { km: tr.km(distance) })}</span>{/if}
     </p>
     <p class="details">
+      {#if station.change24h != null && !stale}
+        <Trend change={station.change24h} {tr} compact />
+      {/if}
       {#if station.measuredAt}
         <time datetime={station.measuredAt} title={tr.dateTime(station.measuredAt)}>
           {tr.ago(station.measuredAt, now)}
@@ -66,6 +83,7 @@
 
 <style>
   .card {
+    position: relative;
     display: grid;
     grid-template-columns: 1fr auto auto;
     align-items: center;
@@ -86,6 +104,42 @@
     font-weight: 600;
     line-height: 1.3;
     overflow-wrap: anywhere;
+  }
+
+  .name a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* The whole card opens the detail page; the star button sits above the link. */
+  .name a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+  }
+
+  .name a:focus-visible {
+    outline: none;
+  }
+
+  .name a:focus-visible::after {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .card:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
+
+  .model {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background: var(--chip);
   }
 
   .meta,
@@ -124,6 +178,8 @@
     padding: 0.35rem 0.6rem;
     border-radius: 10px;
     white-space: nowrap;
+    min-width: 5.2em;
+    text-align: center;
   }
 
   .unit {
@@ -146,6 +202,8 @@
   }
 
   .fav {
+    position: relative;
+    z-index: 1;
     display: grid;
     place-items: center;
     width: 44px;

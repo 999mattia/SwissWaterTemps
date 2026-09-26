@@ -11,9 +11,10 @@
     tr: Translator;
     now: number;
     position: Position | null;
+    onOpen: (id: string) => void;
   }
 
-  let { stations, tr, now: current, position }: Props = $props();
+  let { stations, tr, now: current, position, onOpen }: Props = $props();
 
   const SWITZERLAND: L.LatLngBoundsExpression = [
     [45.8, 5.9],
@@ -54,6 +55,15 @@
       when.className = 'popup-meta';
       el.append(when);
     }
+    const link = document.createElement('a');
+    link.href = `/station/${encodeURIComponent(s.id)}`;
+    link.textContent = `${tr.t('showDetails')} →`;
+    link.className = 'popup-link';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      onOpen(s.id);
+    });
+    el.append(link);
     return el;
   }
 
@@ -118,6 +128,12 @@
     font-size: 1.2rem;
     font-weight: 700;
     margin-top: 0.2rem;
+  }
+
+  .map :global(.popup-link) {
+    display: inline-block;
+    margin-top: 0.3rem;
+    font-weight: 600;
   }
 
   .map :global(.popup-meta) {

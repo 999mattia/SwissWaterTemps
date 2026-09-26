@@ -33,3 +33,8 @@ bin/
 # Frontend build output, embedded into the Go binary
 /web/internal/ui/dist/*
 !/web/internal/ui/dist/.gitkeep
+
+# Local history database (DATA_DIR default)
+/web/data/
+/web/SwissWaterTemps
+/web/swisswatertemps

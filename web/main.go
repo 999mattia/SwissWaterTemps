@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/999mattia/SwissWaterTemps/internal/history"
 	"github.com/999mattia/SwissWaterTemps/internal/server"
 	"github.com/999mattia/SwissWaterTemps/internal/sources"
 	"github.com/999mattia/SwissWaterTemps/internal/store"
@@ -36,17 +38,30 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// History is optional: without a writable data directory the app still
+	// works, just without trends, charts and state that survives restarts.
+	var hist store.History
+	var series server.SeriesFunc
+	dbPath := filepath.Join(env("DATA_DIR", "data"), "swisswatertemps.db")
+	if db, err := history.Open(dbPath); err != nil {
+		slog.Error("history disabled: opening database failed", "path", dbPath, "error", err)
+	} else {
+		defer db.Close()
+		hist, series = db, db.Series
+		go prune(ctx, db)
+	}
+
 	client := sources.NewHTTPClient()
-	st := store.New(
+	st := store.New(hist,
 		sources.NewBAFU(client),
-		sources.NewBoot24(client),
+		sources.NewAlplakes(client),
 		sources.NewHikaWetter(client),
 	)
 	go st.Run(ctx, interval)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           server.New(st.Snapshot, ui.FS()),
+		Handler:           server.New(st, series, ui.FS()),
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       2 * time.Minute,
@@ -63,6 +78,26 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("server stopped", "error", err)
 		os.Exit(1)
+	}
+}
+
+// historyRetention is how long readings are kept.
+const historyRetention = 2 * 365 * 24 * time.Hour
+
+func prune(ctx context.Context, db *history.DB) {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		if n, err := db.Prune(ctx, time.Now().Add(-historyRetention)); err != nil {
+			slog.Error("pruning history failed", "error", err)
+		} else if n > 0 {
+			slog.Info("pruned history", "rows", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }
 
