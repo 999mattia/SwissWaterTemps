@@ -12,7 +12,7 @@ const (
 )
 
 type Station struct {
-	// ID is unique across all sources, e.g. "bafu-2135" or "alplakes-zug".
+	// ID is unique across all sources, e.g. "bafu-2135" or "boot24-zurichsee".
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	WaterBody   string  `json:"waterBody,omitempty"`
@@ -25,12 +25,10 @@ type Station struct {
 	Lat        *float64   `json:"lat,omitempty"`
 	Lon        *float64   `json:"lon,omitempty"`
 	Source     string     `json:"source"`
-	// Modelled is true when the value comes from a lake model rather than a sensor.
-	Modelled bool `json:"modelled,omitempty"`
 	// Change24h is the temperature change compared to about 24 hours earlier.
 	Change24h *float64 `json:"change24h,omitempty"`
 
-	// Recent holds past values a source already knows (e.g. a model hindcast),
+	// Recent holds past values a source already knows (none of the current ones do),
 	// so history can be filled in without waiting for our own polling.
 	Recent []Point `json:"-"`
 	// Forecast holds future values, if the source provides them.

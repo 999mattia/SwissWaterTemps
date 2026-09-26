@@ -12,8 +12,6 @@ export interface Station {
   lat?: number;
   lon?: number;
   source: string;
-  /** True when the value comes from a lake model, not a sensor. */
-  modelled?: boolean;
   /** Change compared to about 24 hours earlier, in °C. */
   change24h?: number;
 }

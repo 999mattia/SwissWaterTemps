@@ -107,7 +107,7 @@
         {/if}
         {#if station.measuredAt}
           <div>
-            <dt>{tr.t(station.modelled ? 'modelled' : 'measured')}</dt>
+            <dt>{tr.t('measured')}</dt>
             <dd><time datetime={station.measuredAt}>{tr.ago(station.measuredAt, now)}</time>
               {#if stale}<span class="badge">{tr.t('stale')}</span>{/if}</dd>
           </div>
@@ -120,10 +120,6 @@
         {/if}
       </dl>
     </div>
-
-    {#if station.modelled}
-      <p class="hint">{tr.t('modelledHint')}</p>
-    {/if}
 
     <section class="card">
       <div class="ranges" role="radiogroup" aria-label={tr.t('chartLabel', { name: station.name })}>
@@ -291,11 +287,6 @@
     margin-left: 0.3rem;
   }
 
-  .hint {
-    font-size: 0.82rem;
-    color: var(--muted);
-    margin: -0.25rem 0 1rem;
-  }
 
   .card {
     background: var(--surface);

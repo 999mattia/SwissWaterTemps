@@ -54,7 +54,7 @@ func main() {
 	client := sources.NewHTTPClient()
 	st := store.New(hist,
 		sources.NewBAFU(client),
-		sources.NewAlplakes(client),
+		sources.NewBoot24(client),
 		sources.NewHikaWetter(client),
 	)
 	go st.Run(ctx, interval)

@@ -8,8 +8,7 @@ Add to Home Screen**.
 
 -   Lakes and rivers with the time of each measurement, the 24 h min/max range and
     the change over the last 24 hours
--   A page per station with a 7-day, 30-day or 1-year chart; lakes also show a
-    5-day forecast
+-   A page per station with a 7-day, 30-day or 1-year chart
 -   Instant search (ignores accents, so "zurich" finds "Zürichsee")
 -   Filter by lakes or rivers, sort by name, warmest, coldest or nearest
 -   Favourites pinned to the top
@@ -23,7 +22,7 @@ Add to Home Screen**.
 ```
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
-  internal/sources/  one fetcher per data source (BAFU, Alplakes, HiKa Wetter)
+  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter)
   internal/store/    polls all sources in the background and caches the result
   internal/history/  SQLite database with the readings and the last state of each source
   internal/server/   JSON API and static file serving
@@ -40,13 +39,8 @@ source as not OK.
 | Source | What | Notes |
 | --- | --- | --- |
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur) | River temperatures, measured | GeoJSON, updated about every 10 minutes |
-| [Alplakes](https://www.alplakes.eawag.ch) (Eawag) | Lake surface temperatures, **modelled** with Simstrat, incl. a 5-day forecast | [API](https://alplakes-api.eawag.ch/docs), Apache 2.0; fetched at most hourly since the model runs daily |
+| [boot24](https://www.boot24.ch/chde/service/temperaturen/) | Lake temperatures | Scraped from the HTML table; approximate lake positions come from `web/internal/sources/lakes.go` |
 | [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
-
-Lake values are model output, not measurements; the app labels them as such.
-The Alplakes lake keys are mapped to German names and positions in
-`web/internal/sources/alplakes_lakes.go`; lakes Alplakes adds later are skipped
-until they are added there.
 
 ### History
 
@@ -112,7 +106,7 @@ The app icons in `frontend/public` are generated from `favicon.svg` with
 
 ## Disclaimer
 
-The data belongs to the BAFU (https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur), Eawag / Alplakes (https://www.alplakes.eawag.ch) and HiKa Wetter (https://hikawetter.ch).
+The data belongs to the BAFU (https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur), boot24 (https://www.boot24.ch/chde/service/temperaturen/) and HiKa Wetter (https://hikawetter.ch).
 Map tiles © swisstopo. This is a non-profit website, used for educational purposes.
 
 ## Garmin Watch App Installation
