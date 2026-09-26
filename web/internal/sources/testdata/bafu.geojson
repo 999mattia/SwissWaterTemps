@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "name": "hydro_sensor_temperature",
+  "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::2056"}},
+  "features": [
+    {"type": "Feature", "id": 1, "geometry": {"type": "Point", "coordinates": [2600670, 1199655]},
+     "properties": {"label": "Aare - Bern, Schönau", "key": "2135", "hydro_body_name": "Aare",
+       "last_value": "17.83", "unit_short": "°C", "last_measured_at": "2026-07-14T10:40:00+02:00",
+       "min_24h": "16.9", "max_24h": "18.4", "mean_24h": "17.6", "failure_text": null, "hydro_station_id": 2135}},
+    {"type": "Feature", "id": 2, "geometry": {"type": "Point", "coordinates": [7.5886, 47.5596]},
+     "properties": {"label": "Rhein - Basel, Rheinhalle", "key": "", "hydro_body_name": "Rhein",
+       "last_value": 21.2, "last_measured_at": "2026-07-14 10:40:00",
+       "min_24h": null, "max_24h": "n/a", "hydro_station_id": "2091"}},
+    {"type": "Feature", "id": 3, "geometry": {"type": "Point", "coordinates": [2700000, 1250000]},
+     "properties": {"label": "Station ohne Messwert", "key": "9999", "last_value": null, "hydro_station_id": 9999}}
+  ]
+}

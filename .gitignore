@@ -29,3 +29,7 @@ developer_key
 .DS_Store
 
 bin/
+
+# Frontend build output, embedded into the Go binary
+/web/internal/ui/dist/*
+!/web/internal/ui/dist/.gitkeep

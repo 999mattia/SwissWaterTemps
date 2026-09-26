@@ -1,0 +1,5 @@
+**/node_modules
+web/internal/ui/dist
+garmin
+.git
+.github
