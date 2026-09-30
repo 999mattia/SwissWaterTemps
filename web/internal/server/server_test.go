@@ -41,8 +41,7 @@ func testHandler() http.Handler {
 		UpdatedAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 		Stations: []station.Station{
 			{ID: "a", Name: "Aare", Kind: station.River, Temperature: 17.5},
-			{ID: "z", Name: "Zürichsee", Kind: station.Lake, Temperature: 21,
-				Forecast: []station.Point{{Time: time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC), Value: 21.5}}},
+			{ID: "z", Name: "Zürichsee", Kind: station.Lake, Temperature: 21},
 			{ID: "broken", Name: "Broken", Kind: station.River},
 		},
 	}
@@ -143,24 +142,19 @@ func TestStationHistory(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body)
 	}
 	var body struct {
-		Station  station.Station `json:"station"`
-		History  []station.Point `json:"history"`
-		Forecast []station.Point `json:"forecast"`
+		Station station.Station `json:"station"`
+		History []station.Point `json:"history"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Station.Name != "Zürichsee" || len(body.History) != 1 || len(body.Forecast) != 1 || body.Forecast[0].Value != 21.5 {
+	if body.Station.Name != "Zürichsee" || len(body.History) != 1 {
 		t.Errorf("unexpected body: %+v", body)
 	}
 	if lastSeriesRange != 30*24*time.Hour {
 		t.Errorf("requested range %v", lastSeriesRange)
 	}
 
-	// Stations without a forecast return an empty list, not null.
-	if rec := do(h, "/api/v1/stations/a/history"); !strings.Contains(rec.Body.String(), `"forecast":[]`) {
-		t.Errorf("forecast should be []: %s", rec.Body)
-	}
 	if do(h, "/api/v1/stations/a/history?days=5000"); lastSeriesRange != 730*24*time.Hour {
 		t.Errorf("days not capped: %v", lastSeriesRange)
 	}

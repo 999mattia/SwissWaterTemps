@@ -90,6 +90,8 @@ func parseBAFU(body []byte) ([]station.Station, error) {
 			Min24h:      p.Min24h.v,
 			Max24h:      p.Max24h.v,
 			Source:      "bafu",
+			// Temperature and flow/level stations share their keys.
+			HydroKey: p.Key,
 		}
 		if c := f.Geometry.Coordinates; len(c) >= 2 {
 			if lat, lon, ok := toWGS84(c[0], c[1]); ok {

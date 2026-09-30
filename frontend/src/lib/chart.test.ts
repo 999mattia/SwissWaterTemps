@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyRows, medianStep, nearestIndex, niceTicks, splitGaps, valueAt, yDomain, type TimedValue } from './chart';
+import { dailyRows, medianStep, nearestIndex, niceTicks, splitGaps, yDomain, type TimedValue } from './chart';
 
 const H = 3600_000;
 const series = (values: number[], step = H, start = Date.UTC(2026, 6, 14)): TimedValue[] =>
@@ -51,16 +51,6 @@ describe('nearestIndex', () => {
     expect(nearestIndex(pts, 0)).toBe(0);
     expect(nearestIndex(pts, Infinity)).toBe(3);
     expect(nearestIndex([], 0)).toBe(-1);
-  });
-});
-
-describe('valueAt', () => {
-  const pts = series([10, 12, 16]);
-  it('interpolates inside the series and is undefined outside', () => {
-    expect(valueAt(pts, pts[0].time + H / 2)).toBe(11);
-    expect(valueAt(pts, pts[2].time)).toBe(16);
-    expect(valueAt(pts, pts[1].time + H / 4)).toBe(13);
-    expect(valueAt(pts, pts[2].time + 1)).toBeUndefined();
   });
 });
 

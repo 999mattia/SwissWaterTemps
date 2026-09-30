@@ -33,6 +33,9 @@ func TestParseBAFU(t *testing.T) {
 	}
 
 	aare := stations[0]
+	if aare.HydroKey != "2135" {
+		t.Errorf("HydroKey = %q", aare.HydroKey)
+	}
 	if aare.ID != "bafu-2135" || aare.Name != "Aare - Bern, Schönau" || aare.WaterBody != "Aare" || aare.Kind != station.River {
 		t.Errorf("unexpected station: %+v", aare)
 	}
@@ -60,6 +63,52 @@ func TestParseBAFU(t *testing.T) {
 	}
 	if !near(*rhein.Lat, 47.5596) || !near(*rhein.Lon, 7.5886) {
 		t.Errorf("WGS84 coordinates changed: %v, %v", *rhein.Lat, *rhein.Lon)
+	}
+}
+
+func TestParseHydro(t *testing.T) {
+	got, err := parseHydro(fixture(t, "hydro.geojson"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 5 {
+		t.Fatalf("got %d stations, want 5", len(got))
+	}
+
+	aare := got["2135"]
+	if aare.Discharge == nil || *aare.Discharge != 67 || aare.WaterLevel == nil || *aare.WaterLevel != 501.82 {
+		t.Errorf("unexpected Aare reading: %+v", aare)
+	}
+	if aare.DangerLevel == nil || *aare.DangerLevel != 1 {
+		t.Errorf("Aare danger level = %v", aare.DangerLevel)
+	}
+	if want := time.Date(2026, 9, 30, 13, 20, 0, 0, time.UTC); aare.MeasuredAt == nil || !aare.MeasuredAt.Equal(want) {
+		t.Errorf("MeasuredAt = %v, want %v", aare.MeasuredAt, want)
+	}
+
+	// A lake gauge has a level but no discharge.
+	if lake := got["2208"]; lake.Discharge != nil || lake.WaterLevel == nil || *lake.WaterLevel != 429.13 {
+		t.Errorf("unexpected lake reading: %+v", lake)
+	}
+	// l/s is converted to m³/s.
+	if melera := got["2206"]; melera.Discharge == nil || !near(*melera.Discharge, 0.019) || *melera.DangerLevel != 3 {
+		t.Errorf("unexpected l/s reading: %+v", melera)
+	}
+	// A relative level ("0.05 m") is dropped, the discharge kept.
+	if brook := got["2282"]; brook.WaterLevel != nil || brook.Discharge == nil {
+		t.Errorf("relative level should be dropped: %+v", brook)
+	}
+	// Gauges without danger levels have none.
+	if canal := got["2446"]; canal.DangerLevel != nil {
+		t.Errorf("not_applicable should have no danger level: %v", *canal.DangerLevel)
+	}
+}
+
+func TestParseHydroErrors(t *testing.T) {
+	for _, body := range []string{`not json`, `{"features": []}`, `{"features": [{"properties": {"key": "1"}}]}`} {
+		if _, err := parseHydro([]byte(body)); err == nil {
+			t.Errorf("parseHydro(%q) returned no error", body)
+		}
 	}
 }
 
@@ -97,6 +146,9 @@ func TestParseBoot24(t *testing.T) {
 	}
 	if untersee.Lat == nil || !near(*untersee.Lat, 47.68) {
 		t.Errorf("Untersee should match the more specific entry, got %v", untersee.Lat)
+	}
+	if zh.HydroKey != "2209" || untersee.HydroKey != "2043" || stations[2].HydroKey != "" {
+		t.Errorf("lake gauges = %q %q %q", zh.HydroKey, untersee.HydroKey, stations[2].HydroKey)
 	}
 
 	if stations[2].Lat != nil || stations[2].MeasuredAt != nil {

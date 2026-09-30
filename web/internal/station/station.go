@@ -27,12 +27,27 @@ type Station struct {
 	Source     string     `json:"source"`
 	// Change24h is the temperature change compared to about 24 hours earlier.
 	Change24h *float64 `json:"change24h,omitempty"`
+	// Hydro is flow and level at the BAFU gauge that measures the same water, if any.
+	Hydro *Hydro `json:"hydro,omitempty"`
+
+	// HydroKey is that gauge's BAFU station key, set by the source; the store
+	// attaches Hydro by it.
+	HydroKey string `json:"-"`
 
 	// Recent holds past values a source already knows (none of the current ones do),
 	// so history can be filled in without waiting for our own polling.
 	Recent []Point `json:"-"`
-	// Forecast holds future values, if the source provides them.
-	Forecast []Point `json:"-"`
+}
+
+// Hydro is the latest reading of a BAFU discharge / water level station.
+type Hydro struct {
+	// Discharge in m³/s (small streams reported in l/s are converted).
+	Discharge *float64 `json:"discharge,omitempty"`
+	// WaterLevel in metres above sea level.
+	WaterLevel *float64 `json:"waterLevel,omitempty"`
+	// DangerLevel is BAFU's flood danger level, 1 (none or low) to 5 (very high).
+	DangerLevel *int       `json:"dangerLevel,omitempty"`
+	MeasuredAt  *time.Time `json:"measuredAt,omitempty"`
 }
 
 type Point struct {

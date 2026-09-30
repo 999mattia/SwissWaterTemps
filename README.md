@@ -9,6 +9,8 @@ Add to Home Screen**.
 -   Lakes and rivers with the time of each measurement, the 24 h min/max range and
     the change over the last 24 hours
 -   A page per station with a 7-day, 30-day or 1-year chart
+-   River flow, water level and BAFU's flood danger level, where BAFU has a
+    gauge on the same water (rivers by station, lakes by their level gauge)
 -   Instant search (ignores accents, so "zurich" finds "Zürichsee")
 -   Filter by lakes or rivers, sort by name, warmest, coldest or nearest
 -   Favourites pinned to the top
@@ -22,7 +24,8 @@ Add to Home Screen**.
 ```
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
-  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter)
+  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter),
+                     plus BAFU's flow/level stations
   internal/store/    polls all sources in the background and caches the result
   internal/history/  SQLite database with the readings and the last state of each source
   internal/server/   JSON API and static file serving
@@ -41,6 +44,7 @@ source as not OK.
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur) | River temperatures, measured | GeoJSON, updated about every 10 minutes |
 | [boot24](https://www.boot24.ch/chde/service/temperaturen/) | Lake temperatures | Scraped from the HTML table; approximate lake positions come from `web/internal/sources/lakes.go` |
 | [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
+| [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-zustand) | Flow, water level and danger level | GeoJSON; attached to the temperature stations by station key (lakes via `lakeGauges` in `lakes.go`). If it fails, the last readings stay and temperatures are unaffected |
 
 ### History
 
@@ -54,8 +58,8 @@ history, trends and restored state.
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/v1/stations` | All stations with measurement time, 24 h range and change, coordinates, plus the status of every source |
-| `GET /api/v1/stations/{id}/history?days=7` | One station with its stored readings (hourly; daily averages beyond 31 days, at most 730 days) and its forecast |
+| `GET /api/v1/stations` | All stations with measurement time, 24 h range and change, coordinates, `hydro` (flow in m³/s, level in m a.s.l., danger level 1–5) where available, plus the status of every source |
+| `GET /api/v1/stations/{id}/history?days=7` | One station with its stored readings (hourly; daily averages beyond 31 days, at most 730 days) |
 | `GET /api/temperatures` | Legacy format used by the Garmin app: `{lakeTemperatures, riverTemperatures}` with `{name, temperature}` |
 | `GET /healthz` | Liveness check |
 

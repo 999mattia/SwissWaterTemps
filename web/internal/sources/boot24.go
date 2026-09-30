@@ -69,6 +69,7 @@ func parseBoot24(body []byte) ([]station.Station, error) {
 			Source:      "boot24",
 		}
 		s.Lat, s.Lon = lakeCoordinates(name)
+		s.HydroKey = lakeGauge(name)
 		stations = append(stations, s)
 	})
 

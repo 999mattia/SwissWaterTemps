@@ -63,13 +63,12 @@ func (s *Server) stations(w http.ResponseWriter, r *http.Request) {
 }
 
 type historyResponse struct {
-	Station  station.Station `json:"station"`
-	History  []station.Point `json:"history"`
-	Forecast []station.Point `json:"forecast"`
+	Station station.Station `json:"station"`
+	History []station.Point `json:"history"`
 }
 
 // stationHistory returns a station with its stored readings of the last
-// ?days= days (default 7, at most 730) and its forecast, if any.
+// ?days= days (default 7, at most 730).
 func (s *Server) stationHistory(w http.ResponseWriter, r *http.Request) {
 	st, ok := s.data.Station(r.PathValue("id"))
 	if !ok {
@@ -87,10 +86,7 @@ func (s *Server) stationHistory(w http.ResponseWriter, r *http.Request) {
 		days = min(n, 730)
 	}
 
-	res := historyResponse{Station: st, History: []station.Point{}, Forecast: st.Forecast}
-	if res.Forecast == nil {
-		res.Forecast = []station.Point{}
-	}
+	res := historyResponse{Station: st, History: []station.Point{}}
 	if s.series != nil {
 		now := time.Now()
 		points, err := s.series(r.Context(), st.ID, now.Add(-time.Duration(days)*24*time.Hour), now)

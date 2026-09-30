@@ -58,6 +58,55 @@ var lakeCentres = []lakeCentre{
 	{"wohlensee", 46.965, 7.36},
 }
 
+// lakeGauges maps lakes to the BAFU station that measures their level, matched
+// like lakeCentres (slug substrings, first match wins, so "untersee" comes
+// before "bodensee"). Where BAFU has several gauges on a lake, the one nearest
+// the middle is used.
+var lakeGauges = []struct{ key, station string }{
+	{"untersee", "2043"},
+	{"bodensee", "2032"},
+	{"zurichsee", "2209"},
+	{"genfersee", "2027"},
+	{"leman", "2027"},
+	{"neuenburgersee", "2154"},
+	{"neuchatel", "2154"},
+	{"vierwaldstattersee", "2207"},
+	{"thunersee", "2093"},
+	{"brienzersee", "2023"},
+	{"bielersee", "2208"},
+	{"lac-de-bienne", "2208"},
+	{"walensee", "2118"},
+	{"zugersee", "2017"},
+	{"lago-maggiore", "2022"},
+	{"langensee", "2022"},
+	{"luganersee", "2101"},
+	{"lago-di-lugano", "2101"},
+	{"ceresio", "2101"},
+	{"murtensee", "2004"},
+	{"lac-de-morat", "2004"},
+	{"sempachersee", "2168"},
+	{"hallwilersee", "2097"},
+	{"baldeggersee", "2137"},
+	{"agerisee", "2031"},
+	{"sarnersee", "2088"},
+	{"lauerzersee", "2484"},
+	{"silsersee", "2072"},
+	{"silvaplanersee", "2073"},
+	{"st-moritzersee", "2066"},
+	{"lac-de-joux", "2007"},
+}
+
+// lakeGauge returns the BAFU level station of a lake, or "" if it has none.
+func lakeGauge(name string) string {
+	s := slug(name)
+	for _, g := range lakeGauges {
+		if strings.Contains(s, g.key) {
+			return g.station
+		}
+	}
+	return ""
+}
+
 func lakeCoordinates(name string) (lat, lon *float64) {
 	s := slug(name)
 	for _, c := range lakeCentres {

@@ -74,16 +74,6 @@ export function nearestIndex(points: TimedValue[], t: number): number {
   return lo;
 }
 
-/** Value of a sorted series at time t, linearly interpolated; undefined outside it. */
-export function valueAt(points: TimedValue[], t: number): number | undefined {
-  if (points.length === 0 || t < points[0].time || t > points[points.length - 1].time) return undefined;
-  const i = nearestIndex(points, t);
-  const p = points[i];
-  if (p.time === t) return p.value;
-  const [a, b] = p.time < t ? [p, points[i + 1]] : [points[i - 1], p];
-  return a.value + ((t - a.time) / (b.time - a.time)) * (b.value - a.value);
-}
-
 export interface DayRow {
   day: number; // epoch ms of local midnight
   min: number;

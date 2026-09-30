@@ -4,28 +4,25 @@
 
   interface Props {
     history: TimedValue[];
-    forecast: TimedValue[];
     tr: Translator;
-    now: number;
     label: string;
   }
 
-  let { history, forecast, tr, now, label }: Props = $props();
+  let { history, tr, label }: Props = $props();
 
   const HEIGHT = 220;
   const M = { top: 16, right: 44, bottom: 26, left: 34 };
   const DAY = 86_400_000;
 
   let width = $state(0);
-  let hover = $state<{ point: TimedValue; forecast: boolean } | null>(null);
+  let hover = $state<TimedValue | null>(null);
 
-  const all = $derived([...history, ...forecast]);
   const innerW = $derived(Math.max(0, width - M.left - M.right));
   const innerH = HEIGHT - M.top - M.bottom;
 
-  const xMin = $derived(all.length ? all[0].time : now);
-  const xMax = $derived(all.length ? all[all.length - 1].time : now);
-  const [yMin, yMax] = $derived(yDomain(all.map((p) => p.value)));
+  const xMin = $derived(history.length ? history[0].time : 0);
+  const xMax = $derived(history.length ? history[history.length - 1].time : 0);
+  const [yMin, yMax] = $derived(yDomain(history.map((p) => p.value)));
 
   const x = (t: number) => M.left + (xMax === xMin ? innerW / 2 : ((t - xMin) / (xMax - xMin)) * innerW);
   const y = (v: number) => M.top + (1 - (v - yMin) / (yMax - yMin)) * innerH;
@@ -36,8 +33,6 @@
   // Missing data shows as gaps: anything over 3 typical steps (at least 6 h).
   const segments = $derived(splitGaps(history, Math.max(6 * 3600_000, 3 * medianStep(history))));
   const last = $derived(history.at(-1));
-  // The forecast line starts at the latest known value so the two connect.
-  const forecastLine = $derived(last && forecast.length ? [last, ...forecast] : forecast);
 
   const yTicks = $derived(niceTicks(yMin, yMax, 4));
 
@@ -62,20 +57,18 @@
     return ticks;
   });
 
-  const showNow = $derived(forecast.length > 0 && now > xMin && now < xMax);
-
   function onPointer(e: PointerEvent) {
     const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
     const t = xMin + ((e.clientX - rect.left - M.left) / innerW) * (xMax - xMin);
-    const i = nearestIndex(all, t);
-    hover = i < 0 ? null : { point: all[i], forecast: i >= history.length };
+    const i = nearestIndex(history, t);
+    hover = i < 0 ? null : history[i];
   }
 
-  const tooltipLeft = $derived(hover ? Math.min(Math.max(x(hover.point.time), 70), width - 70) : 0);
+  const tooltipLeft = $derived(hover ? Math.min(Math.max(x(hover.time), 70), width - 70) : 0);
 </script>
 
 <div class="chart" bind:clientWidth={width}>
-  {#if width > 0 && all.length > 0}
+  {#if width > 0 && history.length > 0}
     <svg
       {width}
       height={HEIGHT}
@@ -94,11 +87,6 @@
         <text class="axis" x={x(tick.time)} y={HEIGHT - 8} text-anchor="middle">{tick.label}</text>
       {/each}
 
-      {#if showNow}
-        <line class="now" x1={x(now)} x2={x(now)} y1={M.top} y2={M.top + innerH} />
-        <text class="axis" x={x(now)} y={M.top - 4} text-anchor="middle">{tr.t('now')}</text>
-      {/if}
-
       {#each segments as seg, i (i)}
         {#if seg.length > 1}
           <path
@@ -109,29 +97,21 @@
         <path class="line" d={path(seg)} />
       {/each}
 
-      {#if forecastLine.length > 1}
-        {@const end = forecastLine[forecastLine.length - 1]}
-        <path class="line forecast" d={path(forecastLine)} />
-        <text class="label" x={x(end.time) + 6} y={y(end.value)} dy="0.32em">{tr.t('forecast')}</text>
-      {/if}
-
       {#if last}
         <circle class="dot" cx={x(last.time)} cy={y(last.value)} r="4.5" />
-        {#if !forecast.length}
-          <text class="label value" x={x(last.time) + 8} y={y(last.value)} dy="0.32em">{tr.temp(last.value)}°</text>
-        {/if}
+        <text class="label value" x={x(last.time) + 8} y={y(last.value)} dy="0.32em">{tr.temp(last.value)}°</text>
       {/if}
 
       {#if hover}
-        <line class="crosshair" x1={x(hover.point.time)} x2={x(hover.point.time)} y1={M.top} y2={M.top + innerH} />
-        <circle class="dot" cx={x(hover.point.time)} cy={y(hover.point.value)} r="4.5" />
+        <line class="crosshair" x1={x(hover.time)} x2={x(hover.time)} y1={M.top} y2={M.top + innerH} />
+        <circle class="dot" cx={x(hover.time)} cy={y(hover.value)} r="4.5" />
       {/if}
     </svg>
 
     {#if hover}
       <div class="tooltip" style:left="{tooltipLeft}px" role="status">
-        <strong>{tr.temp(hover.point.value)} °C</strong>
-        <span>{tr.weekdayTime(new Date(hover.point.time))}{hover.forecast ? ` · ${tr.t('forecast')}` : ''}</span>
+        <strong>{tr.temp(hover.value)} °C</strong>
+        <span>{tr.weekdayTime(new Date(hover.time))}</span>
       </div>
     {/if}
   {/if}
@@ -183,10 +163,6 @@
     stroke-linecap: round;
   }
 
-  .forecast {
-    stroke-dasharray: 4 5;
-  }
-
   .area {
     fill: var(--accent);
     opacity: 0.1;
@@ -198,15 +174,10 @@
     stroke-width: 2;
   }
 
-  .now,
   .crosshair {
     stroke: var(--muted);
     stroke-width: 1;
     shape-rendering: crispEdges;
-  }
-
-  .now {
-    opacity: 0.5;
   }
 
   /* Sits over the top of the plot, next to the crosshair. */

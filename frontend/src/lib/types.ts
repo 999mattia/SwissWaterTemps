@@ -14,6 +14,18 @@ export interface Station {
   source: string;
   /** Change compared to about 24 hours earlier, in °C. */
   change24h?: number;
+  /** Flow and level at the BAFU gauge on the same water, if there is one. */
+  hydro?: Hydro;
+}
+
+export interface Hydro {
+  /** m³/s */
+  discharge?: number;
+  /** metres above sea level */
+  waterLevel?: number;
+  /** BAFU flood danger level, 1 (none or low) to 5 (very high) */
+  dangerLevel?: number;
+  measuredAt?: string;
 }
 
 export interface Point {
@@ -25,7 +37,6 @@ export interface Point {
 export interface StationHistory {
   station: Station;
   history: Point[];
-  forecast: Point[];
 }
 
 export interface Source {

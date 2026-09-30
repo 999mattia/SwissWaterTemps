@@ -57,6 +57,7 @@ func main() {
 		sources.NewBoot24(client),
 		sources.NewHikaWetter(client),
 	)
+	st.SetHydro(sources.NewHydro(client))
 	go st.Run(ctx, interval)
 
 	srv := &http.Server{

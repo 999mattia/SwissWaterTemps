@@ -25,6 +25,11 @@ type History interface {
 	LoadSources(ctx context.Context) (map[string]history.SourceState, error)
 }
 
+// HydroFetcher returns flow and level readings keyed by BAFU station key.
+type HydroFetcher interface {
+	Fetch(ctx context.Context) (map[string]station.Hydro, error)
+}
+
 type sourceState struct {
 	fetcher  sources.Fetcher
 	status   station.Source
@@ -35,6 +40,10 @@ type Store struct {
 	now     func() time.Time
 	states  []*sourceState
 	history History
+	// hydroFetcher is optional; hydro keeps its last good result, and a failure
+	// only means stale or missing flow/level values, never missing temperatures.
+	hydroFetcher HydroFetcher
+	hydro        map[string]station.Hydro
 
 	mu       sync.RWMutex
 	snapshot station.Snapshot
@@ -75,6 +84,10 @@ func New(h History, fetchers ...sources.Fetcher) *Store {
 	return s
 }
 
+// SetHydro adds flow and level readings to the stations that have a gauge.
+// Call it before Run.
+func (s *Store) SetHydro(f HydroFetcher) { s.hydroFetcher = f }
+
 // Snapshot returns the most recent combined data. It never blocks on the network.
 func (s *Store) Snapshot() station.Snapshot {
 	s.mu.RLock()
@@ -107,6 +120,24 @@ func (s *Store) Refresh(ctx context.Context) {
 	results := make([]result, len(s.states))
 
 	var wg sync.WaitGroup
+	var hydro map[string]station.Hydro
+	if s.hydroFetcher != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("flow/level fetch panicked", "panic", r)
+				}
+			}()
+			h, err := s.hydroFetcher.Fetch(ctx)
+			if err != nil {
+				slog.Warn("fetching flow/level failed", "error", err)
+				return
+			}
+			hydro = h
+		}()
+	}
 	for i, st := range s.states {
 		wg.Add(1)
 		go func() {
@@ -122,6 +153,9 @@ func (s *Store) Refresh(ctx context.Context) {
 		}()
 	}
 	wg.Wait()
+	if hydro != nil {
+		s.hydro = hydro
+	}
 
 	now := s.now()
 	var changed []*sourceState
@@ -194,7 +228,13 @@ func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	}
 	for _, st := range s.states {
 		snap.Sources = append(snap.Sources, st.status)
-		snap.Stations = append(snap.Stations, st.stations...)
+		for _, stn := range st.stations {
+			stn.Hydro = nil
+			if h, ok := s.hydro[stn.HydroKey]; ok && stn.HydroKey != "" {
+				stn.Hydro = &h
+			}
+			snap.Stations = append(snap.Stations, stn)
+		}
 	}
 	sort.SliceStable(snap.Stations, func(i, j int) bool {
 		return strings.ToLower(snap.Stations[i].Name) < strings.ToLower(snap.Stations[j].Name)
@@ -202,7 +242,7 @@ func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	return snap
 }
 
-// Station returns one station of the current snapshot, including its forecast.
+// Station returns one station of the current snapshot.
 func (s *Store) Station(id string) (station.Station, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

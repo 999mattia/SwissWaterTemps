@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fetchHistory } from '../lib/api';
-  import { dailyRows, toTimed, valueAt } from '../lib/chart';
+  import { dailyRows, toTimed } from '../lib/chart';
   import type { Translator } from '../lib/i18n';
   import { isStale, temperatureHue } from '../lib/stations';
   import { load, save } from '../lib/storage';
@@ -51,12 +51,8 @@
 
   const station = $derived(data?.station.id === id ? data.station : initial);
   const history = $derived(data?.station.id === id ? toTimed(data.history) : []);
-  const forecast = $derived(data?.station.id === id ? toTimed(data.forecast) : []);
-  // A 5-day forecast is a sliver on a year-long chart, so it is only drawn up to 30 days.
-  const chartForecast = $derived(days <= 30 ? forecast : []);
   const source = $derived(sources.find((s) => s.id === station?.source));
   const stale = $derived(station ? isStale(station, now) : false);
-  const tomorrow = $derived(valueAt(forecast, now + 86_400_000));
   const rows = $derived(dailyRows(history));
 
   $effect(() => {
@@ -115,8 +111,17 @@
         {#if station.min24h != null && station.max24h != null}
           <div><dt>{tr.t('range24h')}</dt><dd>{tr.temp(station.min24h)}–{tr.temp(station.max24h)}°</dd></div>
         {/if}
-        {#if tomorrow != null}
-          <div><dt>{tr.t('tomorrow')}</dt><dd>≈ {tr.temp(tomorrow)}°</dd></div>
+        {#if station.hydro?.discharge != null}
+          <div><dt>{tr.t('discharge')}</dt><dd>{tr.discharge(station.hydro.discharge)} m³/s</dd></div>
+        {/if}
+        {#if station.hydro?.waterLevel != null}
+          <div><dt>{tr.t('waterLevel')}</dt><dd>{tr.level(station.hydro.waterLevel)} {tr.t('masl')}</dd></div>
+        {/if}
+        {#if station.hydro?.dangerLevel != null && station.hydro.dangerLevel >= 2}
+          <div>
+            <dt class="visually-hidden">BAFU</dt>
+            <dd><span class="danger" data-level={station.hydro.dangerLevel}>{tr.t('dangerLevel', { level: String(station.hydro.dangerLevel) })}</span></dd>
+          </div>
         {/if}
       </dl>
     </div>
@@ -134,10 +139,10 @@
         <p class="empty">{tr.t('historyError')}</p>
       {:else if !data || data.station.id !== id}
         <div class="placeholder" aria-hidden="true"></div>
-      {:else if history.length + forecast.length < 2}
+      {:else if history.length < 2}
         <p class="empty">{tr.t('noHistory')}</p>
       {:else}
-        <TemperatureChart {history} forecast={chartForecast} {tr} {now} label={tr.t('chartLabel', { name: station.name })} />
+        <TemperatureChart {history} {tr} label={tr.t('chartLabel', { name: station.name })} />
 
         {#if rows.length > 0}
           <details>
@@ -279,6 +284,31 @@
   /* The trend row has no visible label; let it span both columns. */
   .facts div:first-child:has(.visually-hidden) dd {
     grid-column: 1 / -1;
+  }
+
+  /* BAFU's own danger-level colours: 2 yellow, 3 orange, 4 red, 5 dark red. */
+  .danger {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #ffe600;
+    color: #1a1a1a;
+  }
+
+  .danger[data-level='3'] {
+    background: #ff9c00;
+  }
+
+  .danger[data-level='4'] {
+    background: #e2001a;
+    color: #fff;
+  }
+
+  .danger[data-level='5'] {
+    background: #8b0000;
+    color: #fff;
   }
 
   .badge {

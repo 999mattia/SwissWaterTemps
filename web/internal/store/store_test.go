@@ -65,6 +65,46 @@ func TestRefreshKeepsLastGoodDataPerSource(t *testing.T) {
 	}
 }
 
+type fakeHydro struct {
+	data map[string]station.Hydro
+	err  error
+}
+
+func (f *fakeHydro) Fetch(context.Context) (map[string]station.Hydro, error) { return f.data, f.err }
+
+func TestHydroIsAttachedByKeyAndKeptOnFailure(t *testing.T) {
+	rivers := &fakeFetcher{id: "rivers", stations: []station.Station{
+		{ID: "r1", Name: "Aare", HydroKey: "2135"},
+		{ID: "r2", Name: "Emme", HydroKey: "9999"},
+		{ID: "r3", Name: "Wohlensee"},
+	}}
+	flow := 67.0
+	hydro := &fakeHydro{data: map[string]station.Hydro{"2135": {Discharge: &flow}, "": {Discharge: &flow}}}
+	s := New(nil, rivers)
+	s.SetHydro(hydro)
+	s.Refresh(context.Background())
+
+	check := func() {
+		t.Helper()
+		st := s.Snapshot().Stations
+		if st[0].Hydro == nil || *st[0].Hydro.Discharge != 67 {
+			t.Errorf("Aare should have flow: %+v", st[0].Hydro)
+		}
+		if st[1].Hydro != nil || st[2].Hydro != nil {
+			t.Errorf("stations without a matching gauge got flow: %+v %+v", st[1].Hydro, st[2].Hydro)
+		}
+	}
+	check()
+
+	// A failed flow/level fetch keeps the last readings; temperatures are unaffected.
+	hydro.data, hydro.err = nil, errors.New("timeout")
+	s.Refresh(context.Background())
+	check()
+	if !s.Snapshot().Sources[0].OK {
+		t.Error("a flow/level failure must not mark a temperature source as failing")
+	}
+}
+
 func TestRefreshSurvivesPanickingSource(t *testing.T) {
 	s := New(nil, &fakeFetcher{id: "bad", panics: true}, &fakeFetcher{id: "good", stations: []station.Station{{ID: "g"}}})
 	s.Refresh(context.Background())

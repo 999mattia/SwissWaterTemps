@@ -45,10 +45,11 @@ const de = {
   installHint: 'Tipp: Über «Teilen» → «Zum Home-Bildschirm» als App installieren.',
   back: 'Zurück',
   measured: 'Messwert',
+  discharge: 'Abfluss',
+  waterLevel: 'Pegel',
+  masl: 'm ü. M.',
+  dangerLevel: 'Gefahrenstufe {level}',
   change24h: '{value}° in 24 h',
-  forecast: 'Prognose',
-  tomorrow: 'Morgen',
-  now: 'Jetzt',
   days7: '7 Tage',
   days30: '30 Tage',
   days365: '1 Jahr',
@@ -110,10 +111,11 @@ const fr: Dict = {
   installHint: "Astuce : « Partager » → « Sur l'écran d'accueil » pour l'installer comme app.",
   back: 'Retour',
   measured: 'Mesure',
+  discharge: 'Débit',
+  waterLevel: 'Niveau',
+  masl: 'm',
+  dangerLevel: 'Degré de danger {level}',
   change24h: '{value}° en 24 h',
-  forecast: 'Prévision',
-  tomorrow: 'Demain',
-  now: 'Maintenant',
   days7: '7 jours',
   days30: '30 jours',
   days365: '1 an',
@@ -172,10 +174,11 @@ const en: Dict = {
   installHint: 'Tip: use “Share” → “Add to Home Screen” to install it as an app.',
   back: 'Back',
   measured: 'Measurement',
+  discharge: 'Flow',
+  waterLevel: 'Water level',
+  masl: 'm a.s.l.',
+  dangerLevel: 'Danger level {level}',
   change24h: '{value}° in 24 h',
-  forecast: 'Forecast',
-  tomorrow: 'Tomorrow',
-  now: 'Now',
   days7: '7 days',
   days30: '30 days',
   days365: '1 year',
@@ -210,6 +213,7 @@ export function translator(lang: Lang) {
   const locale = locales[lang];
   const temp = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const level = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const rel = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' });
   const weekdayTime = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -225,6 +229,9 @@ export function translator(lang: Lang) {
     },
     temp: (v: number) => temp.format(v),
     km: (v: number) => km.format(v),
+    /** Flow: whole m³/s for rivers, two significant digits for brooks. */
+    discharge: (v: number) => (v >= 10 ? km.format(v) : new Intl.NumberFormat(locale, { maximumSignificantDigits: 2 }).format(v)),
+    level: (v: number) => level.format(v),
     dateTime: (iso: string) => dateTime.format(new Date(iso)),
     weekdayTime: (d: Date) => weekdayTime.format(d),
     dayMonth: (d: Date) => dayMonth.format(d),
