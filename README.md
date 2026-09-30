@@ -71,6 +71,52 @@ history, trends and restored state.
 | `REFRESH_INTERVAL` | `10m` | How often the sources are fetched (Go duration) |
 | `DATA_DIR` | `data` (`/data` in Docker) | Where the history database is stored |
 
+## Home Assistant
+
+The API needs no key, so Home Assistant can read it with a `rest_command` and
+trigger-based template sensors (one request for all stations). A package,
+e.g. `packages/swisswatertemps.yaml`:
+
+```yaml
+rest_command:
+  swisswatertemps:
+    url: https://swt.mattiag.ch/api/v1/stations
+    method: get
+
+template:
+  - triggers:
+      - trigger: time_pattern
+        minutes: "/10"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: rest_command.swisswatertemps
+        response_variable: r
+        continue_on_error: true
+      - variables:
+          ok: "{{ r is defined and r.status == 200 and r.content is mapping }}"
+          aare: "{{ (r.content.stations if ok else []) | selectattr('id', 'eq', 'bafu-2135') | first | default({}) }}"
+    sensor:
+      - name: Aare Bern water temperature
+        unique_id: swt_aare_bern_temperature
+        unit_of_measurement: °C
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ aare.temperature is number }}"
+        state: "{{ aare.temperature }}"
+        attributes:
+          change_24h: "{{ aare.change24h | default(none) }}"
+      - name: Aare Bern flow
+        unique_id: swt_aare_bern_flow
+        unit_of_measurement: m³/s
+        device_class: volume_flow_rate
+        state_class: measurement
+        availability: "{{ (aare.hydro | default({})).discharge is number }}"
+        state: "{{ aare.hydro.discharge }}"
+```
+
+Station ids are in `/api/v1/stations` (and in the URL of a station's page).
+
 ## Development
 
 Requirements: Go 1.26+ and Node.js 22+.
