@@ -17,7 +17,9 @@ import (
 // Datalakes reads the surface temperature of Eawag's monitoring buoys and
 // platforms from the Datalakes API. Every dataset stores one JSON file per
 // day; the file list is long (hundreds of KB), so the current day's file id is
-// cached and the list only re-read when the dataset reports a newer day.
+// cached and the list only re-read when the dataset reports a newer day, or
+// when the cached file is gone: Datalakes regenerates recent files under new
+// ids several times a day.
 type Datalakes struct {
 	Client  *http.Client
 	BaseURL string
@@ -132,6 +134,12 @@ func (d *Datalakes) fetchSet(ctx context.Context, set datalakesSet) (*station.St
 	}
 
 	body, err = get(ctx, d.Client, fmt.Sprintf("%s/files/%d?get=raw", d.BaseURL, c.fileID))
+	if isNotFound(err) {
+		if err := d.findNewestFile(ctx, set.id, c); err != nil {
+			return nil, err
+		}
+		body, err = get(ctx, d.Client, fmt.Sprintf("%s/files/%d?get=raw", d.BaseURL, c.fileID))
+	}
 	if err != nil {
 		return nil, err
 	}

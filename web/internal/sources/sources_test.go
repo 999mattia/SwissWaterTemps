@@ -375,3 +375,54 @@ func TestZurichPartialFailure(t *testing.T) {
 		t.Error("expected an error when every station fails")
 	}
 }
+
+func TestDatalakesFollowsReplacedFiles(t *testing.T) {
+	current, listCalls := 100, 0
+	now := time.Now().UTC()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/datasetparameters", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"axis":"x","parseparameter":"time"},{"axis":"y","parseparameter":"temperature"},
+			{"axis":"y","parseparameter":"surfacetemp"},{"axis":"y","parseparameter":"surface_temp"}]`))
+	})
+	mux.HandleFunc("/datasets/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"maxdatetime":"` + now.Format(time.RFC3339) + `"}`))
+	})
+	mux.HandleFunc("/files", func(w http.ResponseWriter, r *http.Request) {
+		listCalls++
+		w.Write([]byte(`[{"id":` + strconv.Itoa(current) + `,"filetype":"json","maxdatetime":"` + now.Format(time.RFC3339) + `"}]`))
+	})
+	mux.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/files/"+strconv.Itoa(current) {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(`{"x":[` + strconv.FormatInt(now.Unix(), 10) + `],"y":[19.2]}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	d := NewDatalakes(srv.Client())
+	d.BaseURL = srv.URL
+	if st, err := d.Fetch(context.Background()); err != nil || len(st) != len(datalakesSets) {
+		t.Fatalf("first fetch: %d stations, %v", len(st), err)
+	}
+	if listCalls != len(datalakesSets) {
+		t.Errorf("file list read %d times, want once per dataset", listCalls)
+	}
+
+	// Same day, unchanged file: the cached id is used, no list.
+	d.Fetch(context.Background())
+	if listCalls != len(datalakesSets) {
+		t.Errorf("file list re-read without need: %d", listCalls)
+	}
+
+	// Datalakes replaced the file: the old id 404s, the list is read again.
+	current = 101
+	st, err := d.Fetch(context.Background())
+	if err != nil || len(st) != len(datalakesSets) || st[0].Temperature != 19.2 {
+		t.Fatalf("after replacement: %d stations, %v", len(st), err)
+	}
+	if listCalls != 2*len(datalakesSets) {
+		t.Errorf("file list read %d times after replacement", listCalls)
+	}
+}

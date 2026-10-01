@@ -57,7 +57,7 @@ func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET %s: %s", url, res.Status)
+		return nil, &statusError{url: url, status: res.Status, code: res.StatusCode}
 	}
 	return io.ReadAll(io.LimitReader(res.Body, maxBody))
 }
@@ -74,6 +74,19 @@ func partialError(source string, errs []error, total int) error {
 		return nil
 	}
 	return errors.Join(errs...)
+}
+
+// statusError is a non-200 response, so callers can tell e.g. a 404 apart.
+type statusError struct {
+	url, status string
+	code        int
+}
+
+func (e *statusError) Error() string { return fmt.Sprintf("GET %s: %s", e.url, e.status) }
+
+func isNotFound(err error) bool {
+	var se *statusError
+	return errors.As(err, &se) && se.code == http.StatusNotFound
 }
 
 var numberPattern = regexp.MustCompile(`-?\d+(?:[.,]\d+)?`)
