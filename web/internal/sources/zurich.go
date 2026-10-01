@@ -46,7 +46,7 @@ func (z *Zurich) Fetch(ctx context.Context) ([]station.Station, error) {
 		u := fmt.Sprintf("%s/measurements/%s?sort=%s&limit=144", z.BaseURL, zs.key, url.QueryEscape("timestamp_cet desc"))
 		body, err := get(ctx, z.Client, u)
 		if err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("%s: %w", zs.key, err))
 			continue
 		}
 		s, err := parseZurich(body)
@@ -59,7 +59,7 @@ func (z *Zurich) Fetch(ctx context.Context) ([]station.Station, error) {
 		s.Lat, s.Lon = ptr(zs.lat), ptr(zs.lon)
 		out = append(out, s)
 	}
-	return out, errors.Join(errs...)
+	return out, partialError(z.ID(), errs, len(zurichStations))
 }
 
 type zurichValue struct {

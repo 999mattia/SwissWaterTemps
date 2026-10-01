@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
@@ -64,9 +63,6 @@ var datalakesSets = []datalakesSet{
 // A dataset whose newest value is older than this is left out.
 const datalakesMaxAge = 48 * time.Hour
 
-// Fetch reports an error only when no dataset could be read: single buoys are
-// regularly out of service (maintenance, winter), which must not mark the whole
-// source as unreachable. Their failures are logged instead.
 func (d *Datalakes) Fetch(ctx context.Context) ([]station.Station, error) {
 	var out []station.Station
 	var errs []error
@@ -75,9 +71,7 @@ func (d *Datalakes) Fetch(ctx context.Context) ([]station.Station, error) {
 		d.mu.Lock()
 		c := d.cache[set.id]
 		if err != nil {
-			err = fmt.Errorf("dataset %d: %w", set.id, err)
-			slog.Warn("fetching Datalakes dataset failed", "error", err)
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("dataset %d: %w", set.id, err))
 		} else {
 			c.last = s
 		}
@@ -87,10 +81,7 @@ func (d *Datalakes) Fetch(ctx context.Context) ([]station.Station, error) {
 		}
 		d.mu.Unlock()
 	}
-	if len(errs) == len(datalakesSets) {
-		return out, errors.Join(errs...)
-	}
-	return out, nil
+	return out, partialError(d.ID(), errs, len(datalakesSets))
 }
 
 func (d *Datalakes) fetchSet(ctx context.Context, set datalakesSet) (*station.Station, error) {

@@ -351,3 +351,27 @@ func TestDatalakesPartialFailure(t *testing.T) {
 		t.Error("expected an error when every dataset fails")
 	}
 }
+
+func TestZurichPartialFailure(t *testing.T) {
+	body := fixture(t, "zurich.json")
+	broken := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if broken == "all" || strings.HasSuffix(r.URL.Path, "/"+broken) {
+			http.Error(w, "down", http.StatusBadGateway)
+			return
+		}
+		w.Write(body)
+	}))
+	defer srv.Close()
+	z := &Zurich{Client: srv.Client(), BaseURL: srv.URL}
+
+	broken = zurichStations[0].key
+	stations, err := z.Fetch(context.Background())
+	if err != nil || len(stations) != len(zurichStations)-1 {
+		t.Errorf("one broken station: got %d stations, error %v", len(stations), err)
+	}
+	broken = "all"
+	if _, err := z.Fetch(context.Background()); err == nil {
+		t.Error("expected an error when every station fails")
+	}
+}

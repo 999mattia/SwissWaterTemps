@@ -3,7 +3,6 @@ package sources
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -43,7 +42,7 @@ func (w *Wiewarm) Fetch(ctx context.Context) ([]station.Station, error) {
 	for _, p := range wiewarmPools {
 		body, err := get(ctx, w.Client, w.BaseURL+"/bad.json/"+p.bad)
 		if err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("%s: %w", p.id, err))
 			continue
 		}
 		temp, at, err := parseWiewarm(body, p.becken)
@@ -57,7 +56,7 @@ func (w *Wiewarm) Fetch(ctx context.Context) ([]station.Station, error) {
 			Source: "wiewarm", HydroKey: lakeGauge(p.water),
 		})
 	}
-	return out, errors.Join(errs...)
+	return out, partialError(w.ID(), errs, len(wiewarmPools))
 }
 
 func parseWiewarm(body []byte, becken string) (float64, *time.Time, error) {

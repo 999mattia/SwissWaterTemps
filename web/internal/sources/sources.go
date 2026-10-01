@@ -4,8 +4,10 @@ package sources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -58,6 +60,20 @@ func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 		return nil, fmt.Errorf("GET %s: %s", url, res.Status)
 	}
 	return io.ReadAll(io.LimitReader(res.Body, maxBody))
+}
+
+// partialError reports the failures of a source made of several independent
+// stations or datasets. Single ones are regularly out of service (maintenance,
+// winter), which must not mark the whole source as unreachable, so they are only
+// logged; the source fails when none of its total parts could be read.
+func partialError(source string, errs []error, total int) error {
+	if len(errs) < total {
+		for _, err := range errs {
+			slog.Warn("fetching part of a source failed", "source", source, "error", err)
+		}
+		return nil
+	}
+	return errors.Join(errs...)
 }
 
 var numberPattern = regexp.MustCompile(`-?\d+(?:[.,]\d+)?`)
