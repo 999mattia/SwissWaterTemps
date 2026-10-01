@@ -1,0 +1,95 @@
+{
+    "badid": "7",
+    "badname": "Badebetriebe Thun",
+    "kanton": "BE",
+    "plz": "3604",
+    "ort": "Thun",
+    "adresse1": "Strandbad Thun",
+    "adresse2": "Strandbadweg 10",
+    "email": "strandbad@thun.ch",
+    "telefon": "033 336 81 91",
+    "www": null,
+    "long": "7630562",
+    "lat": "46739937",
+    "zeiten": "Ab Eröffnung (2. Mai 2026 )\n\nTäglich Mai - August : 0700 - 2000 Uhr\n            September: 0700 - 1900 Uhr\nAn Feiertagen: 0700 - 1900 Uhr\nAm 1. August:  0700 - 2000 Uhr\n\nSaisondauer: Anfang Mai bis Mitte September",
+    "preise": "in CHF inkl. Mehrwertsteuer\nEinzeleintritt: Erwachsene           7.--\n                Lehrlinge/Senioren   5.--\n                Kinder (6-15.99)     3.--\n\n10er Abi:       Erwachsene           60.--\n                Lehrlinge/Senioren   42.--\n                Kinder (6-15.99)     25.--  \n      \n\nSaisonabo:      Erwachsene           90.--\n                Lehrlinge/Senioren   60.--\n                Kinder (6-15.99)     35.--  \n\nTeilauszug aus dem Gebührentarif, dieser ersichtlich unter www.thun.ch",
+    "info": "Beim täglichen Betriebsschluss gilt es zu beachten, dass die Badegäste 15 Minuten vor Betriebsschluss aus dem Wasser(See/Becken) müssen.\n\nWeitere Informationen unter: http://www.thun.ch/kultur-events/sport/badebetriebe",
+    "wetterort": "Bern",
+    "uv_station_name": "Bern",
+    "uv_wert": "2",
+    "uv_date": "2026-09-24 05:04:57",
+    "uv_date_pretty": "24.09.",
+    "becken": {
+        "Flussbad Schwäbis (Aare)": {
+            "beckenid": "98",
+            "beckenname": "Flussbad Schwäbis (Aare)",
+            "temp": "18.7",
+            "date": "2026-10-01 17:30:20.13734",
+            "typ": "Fluss",
+            "status": "geöffnet",
+            "smskeywords": null,
+            "smsname": null,
+            "ismain": "t",
+            "date_pretty": "17:30"
+        },
+        "Strandbad Thun (50m)": {
+            "beckenid": "22",
+            "beckenname": "Strandbad Thun (50m)",
+            "temp": "23.9",
+            "date": "2026-10-01 17:18:00",
+            "typ": "Freibad",
+            "status": "geöffnet",
+            "smskeywords": ";THUN;",
+            "smsname": "Thun Freibad",
+            "ismain": "t",
+            "date_pretty": "17:18"
+        },
+        "Strandbad Thun (See)": {
+            "beckenid": "23",
+            "beckenname": "Strandbad Thun (See)",
+            "temp": "19.4",
+            "date": "2026-10-01 17:18:00",
+            "typ": "See",
+            "status": "geöffnet",
+            "smskeywords": ";THUN;THUNERSEE;",
+            "smsname": "Thun See",
+            "ismain": "t",
+            "date_pretty": "17:18"
+        }
+    },
+    "bilder": [
+        {
+            "image": "img/baeder/7/2.jpg",
+            "text": "",
+            "thumbnail": "img/baeder-thumbnail/7/2.jpg",
+            "original": "img/baeder-orig/7/2.jpg"
+        },
+        {
+            "image": "img/baeder/7/3.jpg",
+            "text": "Strandbad Thun",
+            "thumbnail": "img/baeder-thumbnail/7/3.jpg",
+            "original": "img/baeder-orig/7/3.jpg"
+        },
+        {
+            "image": "img/baeder/7/4.jpg",
+            "text": "Becken und Sprungturm",
+            "thumbnail": "img/baeder-thumbnail/7/4.jpg",
+            "original": "img/baeder-orig/7/4.jpg"
+        }
+    ],
+    "infos": [],
+    "wetter": [
+        {
+            "wetter_symbol": "2",
+            "wetter_temp": "-3.0",
+            "wetter_date": "2021-01-11 00:00:00",
+            "wetter_date_pretty": "11.01."
+        },
+        {
+            "wetter_symbol": "3",
+            "wetter_temp": "-3.0",
+            "wetter_date": "2021-01-10 00:00:00",
+            "wetter_date_pretty": "10.01."
+        }
+    ]
+}

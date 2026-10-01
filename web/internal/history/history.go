@@ -1,5 +1,6 @@
-// Package history stores temperature readings and the last known state of
-// every source in SQLite, so trends can be shown and restarts start with data.
+// Package history stores temperature, flow and level readings and the last
+// known state of every source in SQLite, so trends and charts can be shown and
+// restarts start with data.
 package history
 
 import (
@@ -42,6 +43,15 @@ func Open(path string) (*DB, error) {
 			bucket      INTEGER NOT NULL, -- unix seconds, start of the hour
 			temperature REAL    NOT NULL,
 			PRIMARY KEY (station_id, bucket)
+		) WITHOUT ROWID;
+		-- Flow and level per BAFU gauge (station.Hydro), keyed like the gauges
+		-- rather than by station, since a lake's stations share one gauge.
+		CREATE TABLE IF NOT EXISTS hydro_readings (
+			gauge       TEXT    NOT NULL,
+			bucket      INTEGER NOT NULL,
+			discharge   REAL,
+			water_level REAL,
+			PRIMARY KEY (gauge, bucket)
 		) WITHOUT ROWID;
 		CREATE TABLE IF NOT EXISTS sources (
 			id       TEXT PRIMARY KEY,
@@ -90,6 +100,72 @@ func (h *DB) Record(ctx context.Context, stations []station.Station, fallback ti
 		}
 	}
 	return tx.Commit()
+}
+
+// RecordHydro stores the current flow and level of every gauge, in the bucket
+// of its measurement time (or fallback).
+func (h *DB) RecordHydro(ctx context.Context, gauges map[string]station.Hydro, fallback time.Time) error {
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO hydro_readings (gauge, bucket, discharge, water_level) VALUES (?, ?, ?, ?)
+		ON CONFLICT (gauge, bucket) DO UPDATE SET discharge = excluded.discharge, water_level = excluded.water_level`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for key, g := range gauges {
+		at := fallback
+		if g.MeasuredAt != nil {
+			at = *g.MeasuredAt
+		}
+		if _, err := stmt.ExecContext(ctx, key, bucket(at), g.Discharge, g.WaterLevel); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// HydroSeries returns the stored flow and level of one gauge between from and
+// to, averaged per day beyond 31 days like Series. A gauge that doesn't
+// measure one of them gets an empty series for it.
+func (h *DB) HydroSeries(ctx context.Context, gauge string, from, to time.Time) (discharge, level []station.Point, err error) {
+	query := `
+		SELECT bucket, discharge, water_level FROM hydro_readings
+		WHERE gauge = ? AND bucket BETWEEN ? AND ? ORDER BY bucket`
+	if to.Sub(from) > 31*24*time.Hour {
+		query = `
+			SELECT (bucket / 86400) * 86400 + 43200 AS day, AVG(discharge), AVG(water_level)
+			FROM hydro_readings WHERE gauge = ? AND bucket BETWEEN ? AND ?
+			GROUP BY bucket / 86400 ORDER BY day`
+	}
+	rows, err := h.db.QueryContext(ctx, query, gauge, from.Unix(), to.Unix())
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	discharge, level = []station.Point{}, []station.Point{}
+	for rows.Next() {
+		var ts int64
+		var q, l sql.NullFloat64
+		if err := rows.Scan(&ts, &q, &l); err != nil {
+			return nil, nil, err
+		}
+		t := time.Unix(ts, 0).UTC()
+		if q.Valid {
+			discharge = append(discharge, station.Point{Time: t, Value: q.Float64})
+		}
+		if l.Valid {
+			level = append(level, station.Point{Time: t, Value: l.Float64})
+		}
+	}
+	return discharge, level, rows.Err()
 }
 
 // Series returns the readings of one station between from and to. Ranges
@@ -185,13 +261,18 @@ func (h *DB) Change24h(ctx context.Context, stations []station.Station, fallback
 	return out, nil
 }
 
-// Prune deletes readings older than the given time.
+// Prune deletes readings (temperature, flow and level) older than the given time.
 func (h *DB) Prune(ctx context.Context, before time.Time) (int64, error) {
-	res, err := h.db.ExecContext(ctx, `DELETE FROM readings WHERE bucket < ?`, before.Unix())
-	if err != nil {
-		return 0, err
+	var total int64
+	for _, table := range []string{"readings", "hydro_readings"} {
+		res, err := h.db.ExecContext(ctx, `DELETE FROM `+table+` WHERE bucket < ?`, before.Unix())
+		if err != nil {
+			return total, err
+		}
+		n, _ := res.RowsAffected()
+		total += n
 	}
-	return res.RowsAffected()
+	return total, nil
 }
 
 // SourceState is what is persisted per source to survive restarts.

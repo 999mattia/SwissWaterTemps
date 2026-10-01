@@ -70,6 +70,7 @@ func parseBoot24(body []byte) ([]station.Station, error) {
 		}
 		s.Lat, s.Lon = lakeCoordinates(name)
 		s.HydroKey = lakeGauge(name)
+		s.Fallback = true
 		stations = append(stations, s)
 	})
 

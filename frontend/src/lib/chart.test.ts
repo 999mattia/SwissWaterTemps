@@ -18,6 +18,11 @@ describe('niceTicks', () => {
 });
 
 describe('yDomain', () => {
+  it('takes a minimum span and snap step for other metrics', () => {
+    // A lake level that moves by centimetres still gets a 20 cm range, snapped to 5 cm.
+    expect(yDomain([429.12, 429.14], 0.2, 0.05)).toEqual([429.0, 429.25]);
+  });
+
   it('pads and snaps to half degrees', () => {
     expect(yDomain([16.2, 21.7])).toEqual([15.5, 22.5]);
   });

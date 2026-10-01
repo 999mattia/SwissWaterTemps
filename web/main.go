@@ -41,13 +41,13 @@ func main() {
 	// History is optional: without a writable data directory the app still
 	// works, just without trends, charts and state that survives restarts.
 	var hist store.History
-	var series server.SeriesFunc
+	var stored server.History
 	dbPath := filepath.Join(env("DATA_DIR", "data"), "swisswatertemps.db")
 	if db, err := history.Open(dbPath); err != nil {
 		slog.Error("history disabled: opening database failed", "path", dbPath, "error", err)
 	} else {
 		defer db.Close()
-		hist, series = db, db.Series
+		hist, stored = db, db
 		go prune(ctx, db)
 	}
 
@@ -56,13 +56,16 @@ func main() {
 		sources.NewBAFU(client),
 		sources.NewBoot24(client),
 		sources.NewHikaWetter(client),
+		sources.NewZurich(client),
+		sources.NewDatalakes(client),
+		sources.NewWiewarm(client),
 	)
 	st.SetHydro(sources.NewHydro(client))
 	go st.Run(ctx, interval)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           server.New(st, series, ui.FS()),
+		Handler:           server.New(st, stored, ui.FS()),
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       2 * time.Minute,

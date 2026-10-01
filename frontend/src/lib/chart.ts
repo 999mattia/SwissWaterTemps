@@ -5,6 +5,18 @@ export interface TimedValue {
   value: number;
 }
 
+/** How a metric's values are written: on the axis, next to the latest point, in the tooltip. */
+export interface ValueFormat {
+  tick: (v: number) => string;
+  short: (v: number) => string;
+  full: (v: number) => string;
+  /** Smallest y range, and the step it snaps to (see yDomain). */
+  minSpan: number;
+  snap: number;
+  /** Room for the axis labels, in px. */
+  axisWidth: number;
+}
+
 export function toTimed(points: Point[]): TimedValue[] {
   return points.map((p) => ({ time: Date.parse(p.t), value: p.v }));
 }
@@ -22,17 +34,21 @@ export function niceTicks(min: number, max: number, target = 4): number[] {
   return ticks;
 }
 
-/** Y range with some air around the data, snapped outward to half degrees. */
-export function yDomain(values: number[]): [number, number] {
+/**
+ * Y range with some air around the data, at least minSpan wide (so small
+ * wobbles don't fill the chart) and snapped outward to multiples of snap.
+ * The defaults suit temperatures: 2 degrees, half degrees.
+ */
+export function yDomain(values: number[], minSpan = 2, snap = 0.5): [number, number] {
   let lo = Math.min(...values);
   let hi = Math.max(...values);
-  if (hi - lo < 2) {
+  if (hi - lo < minSpan) {
     const mid = (hi + lo) / 2;
-    lo = mid - 1;
-    hi = mid + 1;
+    lo = mid - minSpan / 2;
+    hi = mid + minSpan / 2;
   }
   const pad = (hi - lo) * 0.1;
-  return [Math.floor((lo - pad) * 2) / 2, Math.ceil((hi + pad) * 2) / 2];
+  return [Math.floor((lo - pad) / snap) * snap, Math.ceil((hi + pad) / snap) * snap];
 }
 
 /**

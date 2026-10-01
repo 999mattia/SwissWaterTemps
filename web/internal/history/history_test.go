@@ -154,3 +154,43 @@ func TestPrune(t *testing.T) {
 		t.Errorf("pruned %d rows, err %v", n, err)
 	}
 }
+
+func TestHydroRecordSeriesAndPrune(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 9, 30, 10, 20, 0, 0, time.UTC)
+	q1, q2, l1 := 67.0, 70.0, 501.82
+	at := func(d time.Duration) *time.Time { v := t0.Add(d); return &v }
+
+	if err := db.RecordHydro(ctx, map[string]station.Hydro{
+		"2135": {Discharge: &q1, WaterLevel: &l1, MeasuredAt: at(0)},
+		"2208": {WaterLevel: &l1, MeasuredAt: at(0)},
+	}, t0); err != nil {
+		t.Fatal(err)
+	}
+	// The same hour again: the newer reading wins.
+	if err := db.RecordHydro(ctx, map[string]station.Hydro{"2135": {Discharge: &q2, MeasuredAt: at(30 * time.Minute)}}, t0); err != nil {
+		t.Fatal(err)
+	}
+
+	q, l, err := db.HydroSeries(ctx, "2135", t0.Add(-time.Hour), t0.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q) != 1 || q[0].Value != 70 || len(l) != 0 {
+		t.Errorf("flow %+v, level %+v", q, l)
+	}
+	// A lake gauge has a level only.
+	q, l, _ = db.HydroSeries(ctx, "2208", t0.Add(-time.Hour), t0.Add(time.Hour))
+	if len(q) != 0 || len(l) != 1 || l[0].Value != 501.82 {
+		t.Errorf("lake: flow %+v, level %+v", q, l)
+	}
+	// Long ranges are daily averages.
+	if q, _, _ := db.HydroSeries(ctx, "2135", t0.Add(-40*24*time.Hour), t0.Add(time.Hour)); len(q) != 1 {
+		t.Errorf("daily: %+v", q)
+	}
+
+	if n, err := db.Prune(ctx, t0.Add(time.Hour)); err != nil || n != 2 {
+		t.Errorf("pruned %d rows, err %v", n, err)
+	}
+}

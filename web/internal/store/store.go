@@ -20,6 +20,7 @@ import (
 // store works in memory only and stations have no 24 hour change.
 type History interface {
 	Record(ctx context.Context, stations []station.Station, fallback time.Time) error
+	RecordHydro(ctx context.Context, gauges map[string]station.Hydro, fallback time.Time) error
 	Change24h(ctx context.Context, stations []station.Station, fallback time.Time) (map[string]float64, error)
 	SaveSource(ctx context.Context, state history.SourceState) error
 	LoadSources(ctx context.Context) (map[string]history.SourceState, error)
@@ -82,6 +83,21 @@ func New(h History, fetchers ...sources.Fetcher) *Store {
 
 	s.snapshot = s.build(s.snapshot.UpdatedAt)
 	return s
+}
+
+// usedGauges keeps the gauges some station is attached to: BAFU publishes
+// about 200, fewer than half of them measure water we have a temperature for,
+// and only those are worth keeping history of.
+func (s *Store) usedGauges(all map[string]station.Hydro) map[string]station.Hydro {
+	used := map[string]station.Hydro{}
+	for _, st := range s.states {
+		for _, stn := range st.stations {
+			if h, ok := all[stn.HydroKey]; ok && stn.HydroKey != "" {
+				used[stn.HydroKey] = h
+			}
+		}
+	}
+	return used
 }
 
 // SetHydro adds flow and level readings to the stations that have a gauge.
@@ -180,6 +196,12 @@ func (s *Store) Refresh(ctx context.Context) {
 
 	if s.history != nil {
 		s.persist(ctx, changed, now)
+		// After the stations are updated, so the gauges they use are known.
+		if hydro != nil {
+			if err := s.history.RecordHydro(ctx, s.usedGauges(hydro), now); err != nil {
+				slog.Error("recording flow/level failed", "error", err)
+			}
+		}
 	}
 
 	snap := s.build(now)
@@ -220,15 +242,35 @@ func (s *Store) persist(ctx context.Context, changed []*sourceState, now time.Ti
 	}
 }
 
+// measuredFor is how recent a measured lake value must be to replace the
+// fallback (boot24) value of the same lake.
+const measuredFor = 6 * time.Hour
+
 func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	snap := station.Snapshot{
 		UpdatedAt: updatedAt,
 		Sources:   make([]station.Source, 0, len(s.states)),
 		Stations:  []station.Station{},
 	}
+
+	// Lakes with a fresh measured station; their fallback entries are hidden.
+	measured := map[string]bool{}
+	now := s.now()
+	for _, st := range s.states {
+		for _, stn := range st.stations {
+			if !stn.Fallback && stn.Kind == station.Lake && stn.HydroKey != "" &&
+				stn.MeasuredAt != nil && now.Sub(*stn.MeasuredAt) < measuredFor {
+				measured[stn.HydroKey] = true
+			}
+		}
+	}
+
 	for _, st := range s.states {
 		snap.Sources = append(snap.Sources, st.status)
 		for _, stn := range st.stations {
+			if stn.Fallback && measured[stn.HydroKey] {
+				continue
+			}
 			stn.Hydro = nil
 			if h, ok := s.hydro[stn.HydroKey]; ok && stn.HydroKey != "" {
 				stn.Hydro = &h

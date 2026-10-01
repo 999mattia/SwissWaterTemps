@@ -8,7 +8,10 @@ Add to Home Screen**.
 
 -   Lakes and rivers with the time of each measurement, the 24 h min/max range and
     the change over the last 24 hours
--   A page per station with a 7-day, 30-day or 1-year chart
+-   Measured lake temperatures (Zürich water police, Eawag buoys, Strandbad
+    Thun); boot24's approximate values fill in for the other lakes
+-   A page per station with a 7-day, 30-day or 1-year chart of temperature, and
+    of flow and water level where there's a BAFU gauge
 -   River flow, water level and BAFU's flood danger level, where BAFU has a
     gauge on the same water (rivers by station, lakes by their level gauge)
 -   Instant search (ignores accents, so "zurich" finds "Zürichsee")
@@ -24,7 +27,8 @@ Add to Home Screen**.
 ```
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
-  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter),
+  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter,
+                     Wasserschutzpolizei Zürich, Eawag Datalakes, wiewarm.ch),
                      plus BAFU's flow/level stations
   internal/store/    polls all sources in the background and caches the result
   internal/history/  SQLite database with the readings and the last state of each source
@@ -44,12 +48,21 @@ source as not OK.
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur) | River temperatures, measured | GeoJSON, updated about every 10 minutes |
 | [boot24](https://www.boot24.ch/chde/service/temperaturen/) | Lake temperatures | Scraped from the HTML table; approximate lake positions come from `web/internal/sources/lakes.go` |
 | [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
+| [Wasserschutzpolizei Zürich](https://data.stadt-zuerich.ch/dataset/sid_wapo_wetterstationen) | Zürichsee at Tiefenbrunnen and Mythenquai, measured every 10 minutes (published with about 2 hours' delay) | Open data via the tecdottir API; the last 24 h backfill the history |
+| [Eawag Datalakes](https://www.datalakes-eawag.ch) | Surface temperature of research buoys: Genfersee, Vierwaldstättersee, Murtensee, Hallwilersee, Ägerisee, Lago di Lugano (2), Lago Maggiore | One JSON file per dataset and day; values with a quality flag are skipped. The datasets are listed in `datalakes.go` |
+| [wiewarm.ch](https://www.wiewarm.ch) | Thunersee at Strandbad Thun (automatic sensor) | Most other wiewarm lake values are entered by hand, so only automatic pools are used (`wiewarm.go`) |
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-zustand) | Flow, water level and danger level | GeoJSON; attached to the temperature stations by station key (lakes via `lakeGauges` in `lakes.go`). If it fails, the last readings stay and temperatures are unaffected |
+
+A lake's boot24 entry is hidden while a measured station on the same lake
+(matched by the lake's BAFU level gauge) has a value from the last 6 hours, and
+comes back when the measurement stops.
 
 ### History
 
 Every reading is stored in hourly buckets in SQLite (`$DATA_DIR/swisswatertemps.db`)
-and kept for two years. The database also holds the last data of every source,
+and kept for two years: temperature per station, flow and level per BAFU gauge
+(only gauges a station uses). At that point the database stops growing at
+roughly 120 MB. The database also holds the last data of every source,
 so after a restart the app shows data immediately instead of waiting for the
 first fetch. If the directory isn't writable the app still runs, just without
 history, trends and restored state.
@@ -59,7 +72,7 @@ history, trends and restored state.
 | Endpoint | Description |
 | --- | --- |
 | `GET /api/v1/stations` | All stations with measurement time, 24 h range and change, coordinates, `hydro` (flow in m³/s, level in m a.s.l., danger level 1–5) where available, plus the status of every source |
-| `GET /api/v1/stations/{id}/history?days=7` | One station with its stored readings (hourly; daily averages beyond 31 days, at most 730 days) |
+| `GET /api/v1/stations/{id}/history?days=7` | One station with its stored readings (hourly; daily averages beyond 31 days, at most 730 days): `history` (temperature), `discharge` and `waterLevel` (empty without a gauge) |
 | `GET /api/temperatures` | Legacy format used by the Garmin app: `{lakeTemperatures, riverTemperatures}` with `{name, temperature}` |
 | `GET /healthz` | Liveness check |
 
@@ -156,8 +169,13 @@ The app icons in `frontend/public` are generated from `favicon.svg` with
 
 ## Disclaimer
 
-The data belongs to the BAFU (https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur), boot24 (https://www.boot24.ch/chde/service/temperaturen/) and HiKa Wetter (https://hikawetter.ch).
-Map tiles © swisstopo. This is a non-profit website, used for educational purposes.
+The measurements belong to their providers: the Federal Office for the
+Environment BAFU (temperature, flow, level), boot24, HiKa Wetter, the
+Wasserschutzpolizei of the city of Zürich, Eawag (Datalakes) and wiewarm.ch;
+see the table above for links. Map tiles © swisstopo.
+
+SwissWaterTemps is a private, non-commercial project. No guarantee of accuracy
+or availability; swimming is at your own risk.
 
 ## Garmin Watch App Installation
 

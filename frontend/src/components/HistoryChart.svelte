@@ -1,28 +1,29 @@
 <script lang="ts">
-  import { medianStep, nearestIndex, niceTicks, splitGaps, yDomain, type TimedValue } from '../lib/chart';
+  import { medianStep, nearestIndex, niceTicks, splitGaps, yDomain, type TimedValue, type ValueFormat } from '../lib/chart';
   import type { Translator } from '../lib/i18n';
 
   interface Props {
     history: TimedValue[];
+    format: ValueFormat;
     tr: Translator;
     label: string;
   }
 
-  let { history, tr, label }: Props = $props();
+  let { history, format, tr, label }: Props = $props();
 
   const HEIGHT = 220;
-  const M = { top: 16, right: 44, bottom: 26, left: 34 };
+  const M = $derived({ top: 16, right: 52, bottom: 26, left: format.axisWidth });
   const DAY = 86_400_000;
 
   let width = $state(0);
   let hover = $state<TimedValue | null>(null);
 
   const innerW = $derived(Math.max(0, width - M.left - M.right));
-  const innerH = HEIGHT - M.top - M.bottom;
+  const innerH = $derived(HEIGHT - M.top - M.bottom);
 
   const xMin = $derived(history.length ? history[0].time : 0);
   const xMax = $derived(history.length ? history[history.length - 1].time : 0);
-  const [yMin, yMax] = $derived(yDomain(history.map((p) => p.value)));
+  const [yMin, yMax] = $derived(yDomain(history.map((p) => p.value), format.minSpan, format.snap));
 
   const x = (t: number) => M.left + (xMax === xMin ? innerW / 2 : ((t - xMin) / (xMax - xMin)) * innerW);
   const y = (v: number) => M.top + (1 - (v - yMin) / (yMax - yMin)) * innerH;
@@ -81,7 +82,7 @@
       <!-- Grid and axes stay recessive: hairlines, muted text. -->
       {#each yTicks as tick (tick)}
         <line class="grid" x1={M.left} x2={width - M.right} y1={y(tick)} y2={y(tick)} />
-        <text class="axis" x={M.left - 6} y={y(tick)} dy="0.32em" text-anchor="end">{tr.temp(tick).replace(/[.,]0$/, '')}°</text>
+        <text class="axis" x={M.left - 6} y={y(tick)} dy="0.32em" text-anchor="end">{format.tick(tick)}</text>
       {/each}
       {#each xTicks as tick (tick.time)}
         <text class="axis" x={x(tick.time)} y={HEIGHT - 8} text-anchor="middle">{tick.label}</text>
@@ -99,7 +100,7 @@
 
       {#if last}
         <circle class="dot" cx={x(last.time)} cy={y(last.value)} r="4.5" />
-        <text class="label value" x={x(last.time) + 8} y={y(last.value)} dy="0.32em">{tr.temp(last.value)}°</text>
+        <text class="label value" x={x(last.time) + 8} y={y(last.value)} dy="0.32em">{format.short(last.value)}</text>
       {/if}
 
       {#if hover}
@@ -110,7 +111,7 @@
 
     {#if hover}
       <div class="tooltip" style:left="{tooltipLeft}px" role="status">
-        <strong>{tr.temp(hover.value)} °C</strong>
+        <strong>{format.full(hover.value)}</strong>
         <span>{tr.weekdayTime(new Date(hover.time))}</span>
       </div>
     {/if}

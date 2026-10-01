@@ -38,8 +38,7 @@ const de = {
   locating: 'Standort wird ermittelt …',
   kmAway: '{km} km',
   mapAttribution: 'Karte © swisstopo',
-  disclaimer:
-    'Die Daten gehören {sources}. Diese Website ist ein nicht-kommerzielles Schulprojekt; alle Angaben ohne Gewähr.',
+  disclaimer: 'Die Messdaten stammen von {sources}. SwissWaterTemps ist ein privates, nicht-kommerzielles Projekt; alle Angaben ohne Gewähr, Baden auf eigene Gefahr.',
   sourceCode: 'Quellcode auf GitHub',
   language: 'Sprache',
   installHint: 'Tipp: Über «Teilen» → «Zum Home-Bildschirm» als App installieren.',
@@ -59,12 +58,14 @@ const de = {
   date: 'Datum',
   min: 'Min',
   max: 'Max',
-  chartLabel: 'Temperaturverlauf von {name}',
+  chartLabel: '{metric}: Verlauf für {name}',
   source: 'Quelle',
   notFound: 'Diese Messstelle gibt es nicht (mehr).',
   details: 'Details zu {name}',
   showDetails: 'Verlauf & Details',
   dismiss: 'Schliessen',
+  temperature: 'Temperatur',
+  noMeasuredTime: 'Ohne Messzeitpunkt – Richtwert von {source}',
 };
 
 type Dict = typeof de;
@@ -104,8 +105,7 @@ const fr: Dict = {
   locating: 'Recherche de la position …',
   kmAway: '{km} km',
   mapAttribution: 'Carte © swisstopo',
-  disclaimer:
-    "Les données appartiennent à {sources}. Ce site est un projet scolaire non commercial ; informations sans garantie.",
+  disclaimer: 'Les données de mesure proviennent de {sources}. SwissWaterTemps est un projet privé et non commercial ; sans garantie, baignade à vos propres risques.',
   sourceCode: 'Code source sur GitHub',
   language: 'Langue',
   installHint: "Astuce : « Partager » → « Sur l'écran d'accueil » pour l'installer comme app.",
@@ -125,12 +125,14 @@ const fr: Dict = {
   date: 'Date',
   min: 'Min',
   max: 'Max',
-  chartLabel: 'Évolution de la température : {name}',
+  chartLabel: '{metric} : évolution pour {name}',
   source: 'Source',
   notFound: "Cette station n'existe pas (ou plus).",
   details: 'Détails : {name}',
   showDetails: 'Évolution & détails',
   dismiss: 'Fermer',
+  temperature: 'Température',
+  noMeasuredTime: 'Sans heure de mesure – valeur indicative de {source}',
 };
 
 const en: Dict = {
@@ -168,7 +170,7 @@ const en: Dict = {
   locating: 'Finding your location …',
   kmAway: '{km} km',
   mapAttribution: 'Map © swisstopo',
-  disclaimer: 'The data belongs to {sources}. This is a non-commercial school project; no guarantee of accuracy.',
+  disclaimer: 'Measurements from {sources}. SwissWaterTemps is a private, non-commercial project; no guarantee of accuracy, swim at your own risk.',
   sourceCode: 'Source code on GitHub',
   language: 'Language',
   installHint: 'Tip: use “Share” → “Add to Home Screen” to install it as an app.',
@@ -188,12 +190,14 @@ const en: Dict = {
   date: 'Date',
   min: 'Min',
   max: 'Max',
-  chartLabel: 'Temperature history of {name}',
+  chartLabel: '{metric}: history for {name}',
   source: 'Source',
   notFound: 'This station does not exist (anymore).',
   details: 'Details for {name}',
   showDetails: 'History & details',
   dismiss: 'Close',
+  temperature: 'Temperature',
+  noMeasuredTime: 'No measurement time – approximate value from {source}',
 };
 
 const dicts: Record<Lang, Dict> = { de, fr, en };

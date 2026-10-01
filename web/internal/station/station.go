@@ -31,8 +31,11 @@ type Station struct {
 	Hydro *Hydro `json:"hydro,omitempty"`
 
 	// HydroKey is that gauge's BAFU station key, set by the source; the store
-	// attaches Hydro by it.
+	// attaches Hydro by it. For lakes it also identifies the lake.
 	HydroKey string `json:"-"`
+	// Fallback marks approximate values (boot24's lake table) that give way to
+	// a fresh measured station on the same lake.
+	Fallback bool `json:"-"`
 
 	// Recent holds past values a source already knows (none of the current ones do),
 	// so history can be filled in without waiting for our own polling.

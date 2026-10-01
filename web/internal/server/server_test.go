@@ -28,7 +28,9 @@ func (f fakeData) Station(id string) (station.Station, bool) {
 
 var lastSeriesRange time.Duration
 
-func fakeSeries(_ context.Context, id string, from, to time.Time) ([]station.Point, error) {
+type fakeHistory struct{}
+
+func (fakeHistory) Series(_ context.Context, id string, from, to time.Time) ([]station.Point, error) {
 	lastSeriesRange = to.Sub(from)
 	if id == "broken" {
 		return nil, errors.New("disk on fire")
@@ -36,11 +38,18 @@ func fakeSeries(_ context.Context, id string, from, to time.Time) ([]station.Poi
 	return []station.Point{{Time: from, Value: 17}}, nil
 }
 
+func (fakeHistory) HydroSeries(_ context.Context, gauge string, from, to time.Time) ([]station.Point, []station.Point, error) {
+	if gauge != "2135" {
+		return []station.Point{}, []station.Point{}, nil
+	}
+	return []station.Point{{Time: from, Value: 67}}, []station.Point{{Time: from, Value: 501.8}}, nil
+}
+
 func testHandler() http.Handler {
 	snap := station.Snapshot{
 		UpdatedAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 		Stations: []station.Station{
-			{ID: "a", Name: "Aare", Kind: station.River, Temperature: 17.5},
+			{ID: "a", Name: "Aare", Kind: station.River, Temperature: 17.5, HydroKey: "2135"},
 			{ID: "z", Name: "Zürichsee", Kind: station.Lake, Temperature: 21},
 			{ID: "broken", Name: "Broken", Kind: station.River},
 		},
@@ -50,7 +59,7 @@ func testHandler() http.Handler {
 		"assets/app-abc123.js": {Data: []byte("console.log(1)")},
 		"manifest.webmanifest": {Data: []byte("{}")},
 	}
-	return New(fakeData{snap}, fakeSeries, static)
+	return New(fakeData{snap}, fakeHistory{}, static)
 }
 
 func do(h http.Handler, path string, header ...string) *httptest.ResponseRecorder {
@@ -155,6 +164,14 @@ func TestStationHistory(t *testing.T) {
 		t.Errorf("requested range %v", lastSeriesRange)
 	}
 
+	// Flow and level come with the station's gauge; without one they're empty lists.
+	if rec := do(h, "/api/v1/stations/a/history"); !strings.Contains(rec.Body.String(), `"discharge":[{`) ||
+		!strings.Contains(rec.Body.String(), `"waterLevel":[{`) || strings.Contains(rec.Body.String(), "hydroKey") {
+		t.Errorf("Aare should have flow and level: %s", rec.Body)
+	}
+	if rec := do(h, "/api/v1/stations/z/history"); !strings.Contains(rec.Body.String(), `"discharge":[]`) {
+		t.Errorf("Zürichsee flow should be []: %s", rec.Body)
+	}
 	if do(h, "/api/v1/stations/a/history?days=5000"); lastSeriesRange != 730*24*time.Hour {
 		t.Errorf("days not capped: %v", lastSeriesRange)
 	}

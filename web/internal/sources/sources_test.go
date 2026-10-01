@@ -226,3 +226,75 @@ func TestLakeCoordinatesOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestParseZurich(t *testing.T) {
+	s, err := parseZurich(fixture(t, "zurich.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Three rows, one flagged: two points, oldest first; the newest is current.
+	if len(s.Recent) != 2 || !s.Recent[0].Time.Before(s.Recent[1].Time) {
+		t.Fatalf("Recent = %+v", s.Recent)
+	}
+	if want := time.Date(2026, 10, 1, 13, 30, 0, 0, time.UTC); s.Temperature != 22 || !s.MeasuredAt.Equal(want) {
+		t.Errorf("current = %v at %v", s.Temperature, s.MeasuredAt)
+	}
+	if s.Kind != station.Lake || s.WaterBody != "Zürichsee" || s.HydroKey != "2209" || s.Fallback {
+		t.Errorf("unexpected station: %+v", s)
+	}
+	if _, err := parseZurich([]byte(`{"ok":true,"result":[]}`)); err == nil {
+		t.Error("expected an error without values")
+	}
+}
+
+func TestParseWiewarm(t *testing.T) {
+	temp, at, err := parseWiewarm(fixture(t, "wiewarm.json"), "23")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := time.Date(2026, 10, 1, 15, 18, 0, 0, time.UTC); temp != 19.4 || !at.Equal(want) {
+		t.Errorf("got %v at %v", temp, at)
+	}
+	// Fractional seconds in the date are tolerated.
+	if _, _, err := parseWiewarm(fixture(t, "wiewarm.json"), "98"); err != nil {
+		t.Error(err)
+	}
+	if _, _, err := parseWiewarm(fixture(t, "wiewarm.json"), "1"); err == nil {
+		t.Error("expected an error for an unknown pool")
+	}
+}
+
+func TestParseDatalakes(t *testing.T) {
+	points, err := parseDatalakes(fixture(t, "datalakes.json"), "x", "y", "y2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// null, quality-flagged and implausible values are dropped.
+	if len(points) != 2 || points[0].Value != 19.1 || points[1].Value != 19.4 {
+		t.Fatalf("points = %+v", points)
+	}
+	// Without (usable) quality flags the values are taken as they are.
+	if points, _ := parseDatalakes(fixture(t, "datalakes.json"), "x", "y", "missing"); len(points) != 3 {
+		t.Errorf("without flags: %+v", points)
+	}
+	if _, err := parseDatalakes([]byte(`{"x":[1],"y":[null]}`), "x", "y", ""); err == nil {
+		t.Error("expected an error without valid values")
+	}
+
+	h := hourly([]station.Point{
+		{Time: time.Date(2026, 10, 1, 10, 0, 0, 0, time.UTC), Value: 1},
+		{Time: time.Date(2026, 10, 1, 10, 50, 0, 0, time.UTC), Value: 2},
+		{Time: time.Date(2026, 10, 1, 11, 10, 0, 0, time.UTC), Value: 3},
+	})
+	if len(h) != 2 || h[0].Value != 2 || h[1].Value != 3 {
+		t.Errorf("hourly = %+v", h)
+	}
+}
+
+func TestLakeGaugeIdentifiesLakesAcrossNames(t *testing.T) {
+	for _, pair := range [][2]string{{"Genfersee", "Lac Léman"}, {"Luganersee", "Lago di Lugano"}, {"Neuenburgersee", "Lac de Neuchâtel"}} {
+		if a, b := lakeGauge(pair[0]), lakeGauge(pair[1]); a == "" || a != b {
+			t.Errorf("%s → %q, %s → %q", pair[0], a, pair[1], b)
+		}
+	}
+}

@@ -105,6 +105,38 @@ func TestHydroIsAttachedByKeyAndKeptOnFailure(t *testing.T) {
 	}
 }
 
+func TestFallbackLakeHiddenByFreshMeasurement(t *testing.T) {
+	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	at := func(d time.Duration) *time.Time { v := now.Add(d); return &v }
+	boot24 := &fakeFetcher{id: "boot24", stations: []station.Station{
+		{ID: "b-zh", Name: "Zürichsee", Kind: station.Lake, HydroKey: "2209", Fallback: true},
+		{ID: "b-biel", Name: "Bielersee", Kind: station.Lake, HydroKey: "2208", Fallback: true},
+	}}
+	measured := &fakeFetcher{id: "wapo", stations: []station.Station{
+		{ID: "m-zh", Name: "Zürichsee – Tiefenbrunnen", Kind: station.Lake, HydroKey: "2209", MeasuredAt: at(-time.Hour)},
+	}}
+	s := New(nil, boot24, measured)
+	s.now = func() time.Time { return now }
+	s.Refresh(context.Background())
+
+	ids := func() (out []string) {
+		for _, st := range s.Snapshot().Stations {
+			out = append(out, st.ID)
+		}
+		return out
+	}
+	if got := ids(); len(got) != 2 || got[0] != "b-biel" || got[1] != "m-zh" {
+		t.Errorf("fresh measurement should hide boot24's Zürichsee: %v", got)
+	}
+
+	// Once the measurement is old, boot24's value comes back next to it.
+	measured.stations[0].MeasuredAt = at(-7 * time.Hour)
+	s.Refresh(context.Background())
+	if got := ids(); len(got) != 3 {
+		t.Errorf("stale measurement should not hide the fallback: %v", got)
+	}
+}
+
 func TestRefreshSurvivesPanickingSource(t *testing.T) {
 	s := New(nil, &fakeFetcher{id: "bad", panics: true}, &fakeFetcher{id: "good", stations: []station.Station{{ID: "g"}}})
 	s.Refresh(context.Background())
@@ -171,5 +203,24 @@ func TestHistoryChangeAndRestore(t *testing.T) {
 	}
 	if snap.Stations[0].Change24h == nil {
 		t.Error("restored station lost its 24h change")
+	}
+}
+
+func TestHydroHistoryOnlyForUsedGauges(t *testing.T) {
+	db := openHistory(t, filepath.Join(t.TempDir(), "h.db"))
+	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	flow := 67.0
+	f := &fakeFetcher{id: "rivers", stations: []station.Station{{ID: "r", Name: "Aare", HydroKey: "2135", MeasuredAt: &now}}}
+	s := New(db, f)
+	s.now = func() time.Time { return now }
+	s.SetHydro(&fakeHydro{data: map[string]station.Hydro{"2135": {Discharge: &flow}, "9999": {Discharge: &flow}}})
+	s.Refresh(context.Background())
+
+	from, to := now.Add(-time.Hour), now.Add(time.Hour)
+	if q, _, _ := db.HydroSeries(context.Background(), "2135", from, to); len(q) != 1 {
+		t.Errorf("used gauge not recorded: %+v", q)
+	}
+	if q, _, _ := db.HydroSeries(context.Background(), "9999", from, to); len(q) != 0 {
+		t.Errorf("unused gauge recorded: %+v", q)
 	}
 }

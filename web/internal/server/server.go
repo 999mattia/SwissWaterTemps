@@ -24,18 +24,23 @@ type Data interface {
 	Station(id string) (station.Station, bool)
 }
 
-// SeriesFunc returns the stored readings of a station between from and to.
-type SeriesFunc func(ctx context.Context, stationID string, from, to time.Time) ([]station.Point, error)
-
-type Server struct {
-	data   Data
-	series SeriesFunc
-	static fs.FS
+// History is the stored readings, see history.DB.
+type History interface {
+	// Series returns a station's temperatures between from and to.
+	Series(ctx context.Context, stationID string, from, to time.Time) ([]station.Point, error)
+	// HydroSeries returns a BAFU gauge's flow and level between from and to.
+	HydroSeries(ctx context.Context, gauge string, from, to time.Time) (discharge, level []station.Point, err error)
 }
 
-// New builds the HTTP handler. series may be nil when no history is stored.
-func New(data Data, series SeriesFunc, static fs.FS) http.Handler {
-	s := &Server{data: data, series: series, static: static}
+type Server struct {
+	data    Data
+	history History
+	static  fs.FS
+}
+
+// New builds the HTTP handler. history may be nil when no history is stored.
+func New(data Data, history History, static fs.FS) http.Handler {
+	s := &Server{data: data, history: history, static: static}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/stations", s.stations)
@@ -64,11 +69,15 @@ func (s *Server) stations(w http.ResponseWriter, r *http.Request) {
 
 type historyResponse struct {
 	Station station.Station `json:"station"`
+	// Temperature.
 	History []station.Point `json:"history"`
+	// Flow (m³/s) and level (m a.s.l.) at the station's BAFU gauge, if it has one.
+	Discharge  []station.Point `json:"discharge"`
+	WaterLevel []station.Point `json:"waterLevel"`
 }
 
 // stationHistory returns a station with its stored readings of the last
-// ?days= days (default 7, at most 730).
+// ?days= days (default 7, at most 730): temperature, and flow and level.
 func (s *Server) stationHistory(w http.ResponseWriter, r *http.Request) {
 	st, ok := s.data.Station(r.PathValue("id"))
 	if !ok {
@@ -86,10 +95,14 @@ func (s *Server) stationHistory(w http.ResponseWriter, r *http.Request) {
 		days = min(n, 730)
 	}
 
-	res := historyResponse{Station: st, History: []station.Point{}}
-	if s.series != nil {
+	res := historyResponse{Station: st, History: []station.Point{}, Discharge: []station.Point{}, WaterLevel: []station.Point{}}
+	if s.history != nil {
 		now := time.Now()
-		points, err := s.series(r.Context(), st.ID, now.Add(-time.Duration(days)*24*time.Hour), now)
+		from := now.Add(-time.Duration(days) * 24 * time.Hour)
+		points, err := s.history.Series(r.Context(), st.ID, from, now)
+		if err == nil && st.HydroKey != "" {
+			res.Discharge, res.WaterLevel, err = s.history.HydroSeries(r.Context(), st.HydroKey, from, now)
+		}
 		if err != nil {
 			slog.Error("reading history", "station", st.ID, "error", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)

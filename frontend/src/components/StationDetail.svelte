@@ -1,11 +1,11 @@
 <script lang="ts">
   import { fetchHistory } from '../lib/api';
-  import { dailyRows, toTimed } from '../lib/chart';
+  import { dailyRows, toTimed, type TimedValue, type ValueFormat } from '../lib/chart';
   import type { Translator } from '../lib/i18n';
   import { isStale, temperatureHue } from '../lib/stations';
   import { load, save } from '../lib/storage';
   import type { Source, Station, StationHistory } from '../lib/types';
-  import TemperatureChart from './TemperatureChart.svelte';
+  import HistoryChart from './HistoryChart.svelte';
   import Trend from './Trend.svelte';
 
   interface Props {
@@ -50,7 +50,53 @@
   });
 
   const station = $derived(data?.station.id === id ? data.station : initial);
-  const history = $derived(data?.station.id === id ? toTimed(data.history) : []);
+  type Metric = 'temperature' | 'discharge' | 'waterLevel';
+  const loaded = $derived(data?.station.id === id ? data : null);
+  const series = $derived<Record<Metric, TimedValue[]>>({
+    temperature: loaded ? toTimed(loaded.history) : [],
+    discharge: loaded ? toTimed(loaded.discharge) : [],
+    waterLevel: loaded ? toTimed(loaded.waterLevel) : [],
+  });
+  // Flow and level are offered when the station's gauge measures them.
+  const metrics = $derived(
+    (['temperature', 'discharge', 'waterLevel'] as Metric[]).filter(
+      (m) => m === 'temperature' || series[m].length > 0 || station?.hydro?.[m] != null,
+    ),
+  );
+  // Every station opens on temperature.
+  let chosen = $state<Metric>('temperature');
+  const metric = $derived(metrics.includes(chosen) ? chosen : 'temperature');
+  const history = $derived(series[metric]);
+
+  const formats = $derived<Record<Metric, ValueFormat>>({
+    temperature: {
+      tick: (v) => `${tr.temp(v).replace(/[.,]0$/, '')}°`,
+      short: (v) => `${tr.temp(v)}°`,
+      full: (v) => `${tr.temp(v)} °C`,
+      minSpan: 2,
+      snap: 0.5,
+      axisWidth: 34,
+    },
+    discharge: {
+      tick: (v) => tr.discharge(v),
+      short: (v) => tr.discharge(v),
+      full: (v) => `${tr.discharge(v)} m³/s`,
+      // A tenth of the flow, so a steady river shows as steady.
+      minSpan: Math.max(0.001, 0.1 * Math.max(...series.discharge.map((p) => p.value), 0)),
+      snap: Math.max(0.001, 0.025 * Math.max(...series.discharge.map((p) => p.value), 0)),
+      axisWidth: 40,
+    },
+    waterLevel: {
+      tick: (v) => tr.level(v),
+      short: (v) => tr.level(v),
+      full: (v) => `${tr.level(v)} ${tr.t('masl')}`,
+      minSpan: 0.2,
+      snap: 0.05,
+      axisWidth: 50,
+    },
+  });
+  const format = $derived(formats[metric]);
+  const metricName = $derived(tr.t(metric));
   const source = $derived(sources.find((s) => s.id === station?.source));
   const stale = $derived(station ? isStale(station, now) : false);
   const rows = $derived(dailyRows(history));
@@ -126,8 +172,21 @@
       </dl>
     </div>
 
+    {#if !station.measuredAt}
+      <p class="note">{tr.t('noMeasuredTime', { source: source?.name ?? station.source })}</p>
+    {/if}
+
     <section class="card">
-      <div class="ranges" role="radiogroup" aria-label={tr.t('chartLabel', { name: station.name })}>
+      {#if metrics.length > 1}
+        <div class="ranges metrics" role="radiogroup" aria-label={station.name}>
+          {#each metrics as m (m)}
+            <button role="radio" aria-checked={metric === m} class:active={metric === m} onclick={() => (chosen = m)}>
+              {tr.t(m)}
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <div class="ranges" role="radiogroup" aria-label={tr.t('chartLabel', { metric: metricName, name: station.name })}>
         {#each RANGES as [value, key] (value)}
           <button role="radio" aria-checked={days === value} class:active={days === value} onclick={() => (days = value)}>
             {tr.t(key)}
@@ -142,7 +201,7 @@
       {:else if history.length < 2}
         <p class="empty">{tr.t('noHistory')}</p>
       {:else}
-        <TemperatureChart {history} {tr} label={tr.t('chartLabel', { name: station.name })} />
+        <HistoryChart {history} {format} {tr} label={tr.t('chartLabel', { metric: metricName, name: station.name })} />
 
         {#if rows.length > 0}
           <details>
@@ -155,8 +214,8 @@
                 {#each rows as row (row.day)}
                   <tr>
                     <td>{tr.fullDate(new Date(row.day))}</td>
-                    <td>{tr.temp(row.min)}°</td>
-                    <td>{tr.temp(row.max)}°</td>
+                    <td>{format.full(row.min)}</td>
+                    <td>{format.full(row.max)}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -331,6 +390,16 @@
     border-radius: 10px;
     padding: 3px;
     margin-bottom: 0.75rem;
+  }
+
+  .ranges.metrics {
+    margin-right: 0.5rem;
+  }
+
+  .note {
+    margin: -0.5rem 0 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
   }
 
   .ranges button {

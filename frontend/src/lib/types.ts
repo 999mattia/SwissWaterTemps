@@ -36,7 +36,11 @@ export interface Point {
 
 export interface StationHistory {
   station: Station;
+  /** Temperature */
   history: Point[];
+  /** Flow (m³/s) and level (m a.s.l.) at the station's BAFU gauge; empty without one. */
+  discharge: Point[];
+  waterLevel: Point[];
 }
 
 export interface Source {
