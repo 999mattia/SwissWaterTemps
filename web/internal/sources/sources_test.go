@@ -2,10 +2,13 @@ package sources
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -296,5 +299,55 @@ func TestLakeGaugeIdentifiesLakesAcrossNames(t *testing.T) {
 		if a, b := lakeGauge(pair[0]), lakeGauge(pair[1]); a == "" || a != b {
 			t.Errorf("%s → %q, %s → %q", pair[0], a, pair[1], b)
 		}
+	}
+}
+
+func TestDatalakesPartialFailure(t *testing.T) {
+	broken := 0 // number of datasets answering with an error
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("datasets_id")
+		if id == "" && strings.HasPrefix(r.URL.Path, "/datasets/") {
+			id = strings.TrimPrefix(r.URL.Path, "/datasets/")
+		}
+		for _, set := range datalakesSets[:broken] {
+			if id == strconv.Itoa(set.id) {
+				http.Error(w, "down", http.StatusBadGateway)
+				return
+			}
+		}
+		now := time.Now().UTC()
+		switch {
+		case r.URL.Path == "/datasetparameters":
+			set := datalakesSets[0]
+			for _, s := range datalakesSets {
+				if strconv.Itoa(s.id) == id {
+					set = s
+				}
+			}
+			fmt.Fprintf(w, `[{"axis":"x","parseparameter":"time"},{"axis":"y","parseparameter":%q}]`, set.param)
+		case strings.HasPrefix(r.URL.Path, "/datasets/"):
+			fmt.Fprintf(w, `{"maxdatetime":%q}`, now.Format(time.RFC3339))
+		case r.URL.Path == "/files":
+			fmt.Fprintf(w, `[{"id":1,"filetype":"json","maxdatetime":%q}]`, now.Format(time.RFC3339))
+		default:
+			fmt.Fprintf(w, `{"x":[%d],"y":[15.2]}`, now.Unix())
+		}
+	}))
+	defer srv.Close()
+
+	broken = 1
+	d := &Datalakes{Client: srv.Client(), BaseURL: srv.URL, cache: map[int]*datalakesCache{}}
+	stations, err := d.Fetch(context.Background())
+	if err != nil {
+		t.Errorf("one broken dataset must not fail the source: %v", err)
+	}
+	if len(stations) != len(datalakesSets)-1 {
+		t.Errorf("got %d stations, want %d", len(stations), len(datalakesSets)-1)
+	}
+
+	broken = len(datalakesSets)
+	d = &Datalakes{Client: srv.Client(), BaseURL: srv.URL, cache: map[int]*datalakesCache{}}
+	if _, err := d.Fetch(context.Background()); err == nil {
+		t.Error("expected an error when every dataset fails")
 	}
 }
