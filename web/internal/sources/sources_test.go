@@ -382,7 +382,8 @@ func TestDatalakesFollowsReplacedFiles(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/datasetparameters", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"axis":"x","parseparameter":"time"},{"axis":"y","parseparameter":"temperature"},
-			{"axis":"y","parseparameter":"surfacetemp"},{"axis":"y","parseparameter":"surface_temp"}]`))
+			{"axis":"y","parseparameter":"surfacetemp"},{"axis":"y","parseparameter":"surface_temp"},
+			{"axis":"y","parseparameter":"temp"},{"axis":"y","parseparameter":"wt1"}]`))
 	})
 	mux.HandleFunc("/datasets/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"maxdatetime":"` + now.Format(time.RFC3339) + `"}`))
@@ -424,5 +425,161 @@ func TestDatalakesFollowsReplacedFiles(t *testing.T) {
 	}
 	if listCalls != 2*len(datalakesSets) {
 		t.Errorf("file list read %d times after replacement", listCalls)
+	}
+}
+
+func byID(stations []station.Station) map[string]station.Station {
+	m := map[string]station.Station{}
+	for _, s := range stations {
+		m[s.ID] = s
+	}
+	return m
+}
+
+func TestParseWiskiThurgau(t *testing.T) {
+	now := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+	got, err := NewThurgau(nil).parse(fixture(t, "wiski_tg.json"), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// BAFU's U2288 and F1265, last measured three days ago, are left out.
+	if len(got) != 4 {
+		t.Fatalf("got %d stations, want 4: %+v", len(got), got)
+	}
+	m := byID(got)
+
+	altnau := m["tg-m1090"]
+	if altnau.Name != "Bodensee – Altnau" || altnau.Kind != station.Lake || altnau.HydroKey != lakeGauge("Bodensee") || altnau.Temperature != 16.7 {
+		t.Errorf("unexpected lake station: %+v", altnau)
+	}
+	if want := time.Date(2026, 10, 12, 7, 0, 0, 0, time.UTC); !altnau.MeasuredAt.Equal(want) {
+		t.Errorf("MeasuredAt = %v, want %v", altnau.MeasuredAt, want)
+	}
+	if !near(*altnau.Lat, 47.6248) || !near(*altnau.Lon, 9.2707) {
+		t.Errorf("coordinates = %v, %v", *altnau.Lat, *altnau.Lon)
+	}
+	if s := m["tg-f2200"]; s.Name != "Kemmenbach - Gruebmuehle" || s.WaterBody != "Kemmenbach" || s.Kind != station.River || s.HydroKey != "" {
+		t.Errorf("unexpected river station: %+v", s)
+	}
+	if s := m["tg-f1150"]; s.Name != "Seerhein - Gottlieben" || s.Temperature != 17.32 {
+		t.Errorf("unexpected station: %+v", s)
+	}
+	if s := m["tg-00040"]; s.Name != "Rhein - Rheinfall oben" {
+		t.Errorf("override not applied: %+v", s)
+	}
+}
+
+func TestParseWiskiStGallen(t *testing.T) {
+	now := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+	got, err := NewStGallen(nil).parse(fixture(t, "wiski_sg.json"), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d stations, want 3 (BAFU's LH2104 left out): %+v", len(got), got)
+	}
+	m := byID(got)
+	// St. Gallen sends numbers, not strings.
+	if s := m["sg-8501"]; s.Name != "Thur - Niederbüren" || s.WaterBody != "Thur" || s.Temperature != 10.7 || s.Lat == nil {
+		t.Errorf("unexpected station: %+v", s)
+	}
+	if s := m["sg-4503"]; s.Name != "Rechter Hintergraben" || s.WaterBody != "Rechter Hintergraben" {
+		t.Errorf("unexpected station: %+v", s)
+	}
+	if s := m["sg-2901"]; s.Name != "Simmi" || s.WaterBody != "Simmi" {
+		t.Errorf("unexpected station: %+v", s)
+	}
+
+	if _, err := NewStGallen(nil).parse(fixture(t, "wiski_sg.json"), now.Add(72*time.Hour)); err == nil {
+		t.Error("expected an error when every station is out of date")
+	}
+}
+
+func TestParseZurichCanton(t *testing.T) {
+	now := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+	got, err := parseZurichCanton(fixture(t, "zurichcanton.html"), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The BAFU station and Zürichsee-Oberrieden are left out.
+	if len(got) != 4 {
+		t.Fatalf("got %d stations, want 4: %+v", len(got), got)
+	}
+	m := byID(got)
+
+	glatt := m["zh-533"]
+	if glatt.Name != "Glatt - Dübendorf" || glatt.Kind != station.River || glatt.Temperature != 16.0 || glatt.Lat == nil {
+		t.Errorf("unexpected station: %+v", glatt)
+	}
+	if glatt.Max24h == nil || *glatt.Max24h != 17.2 || glatt.Min24h == nil || *glatt.Min24h != 15.6 {
+		t.Errorf("min/max = %v / %v", glatt.Min24h, glatt.Max24h)
+	}
+	// Local time.
+	if want := time.Date(2026, 10, 12, 8, 45, 0, 0, time.UTC); !glatt.MeasuredAt.Equal(want) {
+		t.Errorf("MeasuredAt = %v, want %v", glatt.MeasuredAt, want)
+	}
+	if s := m["zh-552"]; s.Name != "Türlersee" || s.Kind != station.Lake || s.Temperature != 15.9 {
+		t.Errorf("unexpected lake: %+v", s)
+	}
+
+	if _, err := parseZurichCanton([]byte("<html><table></table></html>"), now); err == nil {
+		t.Error("expected an error for a page without stations")
+	}
+}
+
+func TestParseVorarlberg(t *testing.T) {
+	got, err := parseVorarlberg(fixture(t, "vorarlberg.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d stations, want 2", len(got))
+	}
+	harbour, mili := got[0], got[1]
+	if harbour.ID != "vowis-bregenz-hafen" || harbour.Temperature != 17.8 || harbour.Kind != station.Lake || harbour.HydroKey != lakeGauge("Bodensee") {
+		t.Errorf("unexpected station: %+v", harbour)
+	}
+	if want := time.Date(2026, 10, 12, 9, 15, 0, 0, time.UTC); !harbour.MeasuredAt.Equal(want) {
+		t.Errorf("MeasuredAt = %v, want %v", harbour.MeasuredAt, want)
+	}
+	if mili.ID != "vowis-bregenz-mili" || mili.Temperature != 18 {
+		t.Errorf("unexpected station: %+v", mili)
+	}
+
+	if _, err := parseVorarlberg([]byte(`[{"wTemperatur":{"datum":"2026-10-12T09:15:00Z","wert":null}}]`)); err == nil {
+		t.Error("expected an error without values")
+	}
+}
+
+func TestParseWTLive(t *testing.T) {
+	temp, err := parseWTLive(fixture(t, "wtlive.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if temp != 17.2 {
+		t.Errorf("temperature = %v, want 17.2", temp)
+	}
+	if _, err := parseWTLive([]byte("<html><h1>--</h1></html>")); err == nil {
+		t.Error("expected an error without a value")
+	}
+}
+
+func TestWTLivePartialFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/vingelz/" {
+			http.Error(w, "gone", http.StatusInternalServerError)
+			return
+		}
+		w.Write(fixture(t, "wtlive.html"))
+	}))
+	defer srv.Close()
+
+	w := &WTLive{Client: srv.Client(), BaseURL: srv.URL + "/%s/"}
+	got, err := w.Fetch(context.Background())
+	if err != nil {
+		t.Fatalf("one failing sensor must not fail the source: %v", err)
+	}
+	if len(got) != len(wtliveSensors)-1 {
+		t.Errorf("got %d stations, want %d", len(got), len(wtliveSensors)-1)
 	}
 }

@@ -9,7 +9,10 @@ Add to Home Screen**.
 -   Lakes and rivers with the time of each measurement, the 24 h min/max range and
     the change over the last 24 hours
 -   Measured lake temperatures (Zürich water police, Eawag buoys, Strandbad
-    Thun); boot24's approximate values fill in for the other lakes
+    Thun, Bodensee at Bregenz and Altnau, Bielersee sensors, Türlersee);
+    boot24's approximate values fill in for the other lakes
+-   Rivers and streams from BAFU plus the cantons of Zürich, Thurgau,
+    Schaffhausen and St. Gallen
 -   A page per station with a 7-day, 30-day or 1-year chart of temperature, and
     of flow and water level where there's a BAFU gauge
 -   River flow, water level and BAFU's flood danger level, where BAFU has a
@@ -28,8 +31,10 @@ Add to Home Screen**.
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
   internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter,
-                     Wasserschutzpolizei Zürich, Eawag Datalakes, wiewarm.ch),
-                     plus BAFU's flow/level stations
+                     Wasserschutzpolizei Zürich, Eawag Datalakes, wiewarm.ch,
+                     canton of Zürich, Thurgau/Schaffhausen, St. Gallen,
+                     Vorarlberg, wassertemperatur.live), plus BAFU's
+                     flow/level stations
   internal/store/    polls all sources in the background and caches the result
   internal/history/  SQLite database with the readings and the last state of each source
   internal/server/   JSON API and static file serving
@@ -49,13 +54,19 @@ source as not OK.
 | [boot24](https://www.boot24.ch/chde/service/temperaturen/) | Lake temperatures | Scraped from the HTML table; approximate lake positions come from `web/internal/sources/lakes.go` |
 | [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
 | [Wasserschutzpolizei Zürich](https://data.stadt-zuerich.ch/dataset/sid_wapo_wetterstationen) | Zürichsee at Tiefenbrunnen and Mythenquai, measured every 10 minutes (published with about 2 hours' delay) | Open data via the tecdottir API; the last 24 h backfill the history |
-| [Eawag Datalakes](https://www.datalakes-eawag.ch) | Surface temperature of research buoys: Genfersee, Vierwaldstättersee, Murtensee, Hallwilersee, Ägerisee, Lago di Lugano (2), Lago Maggiore | One JSON file per dataset and day; values with a quality flag are skipped. The datasets are listed in `datalakes.go` |
+| [Eawag Datalakes](https://www.datalakes-eawag.ch) | Surface temperature of research buoys and stations: Genfersee (Pully, Buchillon), Vierwaldstättersee, Murtensee, Hallwilersee, Ägerisee, Lago di Lugano (5), Lago Maggiore | One JSON file per dataset and day; values with a quality flag are skipped. The datasets are listed in `datalakes.go` |
 | [wiewarm.ch](https://www.wiewarm.ch) | Thunersee at Strandbad Thun (automatic sensor) | Most other wiewarm lake values are entered by hand, so only automatic pools are used (`wiewarm.go`) |
+| [Kanton Zürich (AWEL)](https://www.zh.ch/de/umwelt-tiere/wasser-gewaesser/messdaten/wassertemperaturen.html) | Rivers and streams (Glatt, Töss, Sihl, Limmat, …) and the Türlersee, every 15 minutes, with 24 h min/max | Scraped from the [current values table](https://hydroproweb.zh.ch/Listen/AktuelleWerte/AktWassertemp.html); only the stations listed in `zurichcanton.go` (with their positions) are used, BAFU's and two implausible ones are left out |
+| [Hydrodaten Thurgau/Schaffhausen](https://www.hydrodaten.tg.ch) | Rhine, Seerhein, Thur tributaries and the Bodensee at Altnau, every 10–15 minutes | JSON layer of the cantons' WISKI portal (`wiski.go`); BAFU's stations are left out |
+| [Hydrodaten St. Gallen](https://www.hydrodaten.sg.ch) | Rivers and streams of St. Gallen and Appenzell | Same WISKI format as Thurgau |
+| [Land Vorarlberg (VOWIS)](https://vowis.vorarlberg.at/stationswrapper/bodensee) | Bodensee at Bregenz: harbour and Strandbad Mili (0.5 m), every 10 minutes | JSON |
+| [wassertemperatur.live](https://wassertemperatur.live) | Bielersee at Strandbad Biel and Vingelz, battery sensors sending hourly | One page per sensor with only the current value, no time (`wtlive.go`) |
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-zustand) | Flow, water level and danger level | GeoJSON; attached to the temperature stations by station key (lakes via `lakeGauges` in `lakes.go`). If it fails, the last readings stay and temperatures are unaffected |
 
 A lake's boot24 entry is hidden while a measured station on the same lake
 (matched by the lake's BAFU level gauge) has a value from the last 6 hours, and
-comes back when the measurement stops.
+comes back when the measurement stops. Stations without a measurement time
+(wassertemperatur.live, HiKa Wetter) don't hide it.
 
 ### History
 
@@ -171,7 +182,9 @@ The app icons in `frontend/public` are generated from `favicon.svg` with
 
 The measurements belong to their providers: the Federal Office for the
 Environment BAFU (temperature, flow, level), boot24, HiKa Wetter, the
-Wasserschutzpolizei of the city of Zürich, Eawag (Datalakes) and wiewarm.ch;
+Wasserschutzpolizei of the city of Zürich, Eawag (Datalakes), wiewarm.ch, the
+cantons of Zürich, Thurgau, Schaffhausen and St. Gallen, the state of
+Vorarlberg and wassertemperatur.live;
 see the table above for links. Map tiles © swisstopo.
 
 SwissWaterTemps is a private, non-commercial project. No guarantee of accuracy

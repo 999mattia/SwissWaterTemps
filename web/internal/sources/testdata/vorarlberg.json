@@ -1,0 +1,103 @@
+[
+ {
+  "pegelnullpunkt": 392.14,
+  "pnpGueltigSeit": "2018-12-13T00:00:00",
+  "hW2": 460,
+  "hW10": 512,
+  "hW20": 531,
+  "hW30": 540,
+  "hW50": 553,
+  "hW100": 568,
+  "hW2abs": 396.74,
+  "hW10abs": 397.26,
+  "hW20abs": 397.45,
+  "hW30abs": 397.53999999999996,
+  "hW50abs": 397.66999999999996,
+  "hW100abs": 397.82,
+  "wMessungSeit": "1855-01-01T00:00:00",
+  "wtMessungSeit": "1895-01-01T00:00:00",
+  "luftfeuchte": {
+   "datum": "2026-10-12T09:00:00Z",
+   "wert": 65
+  },
+  "lufttemperatur": {
+   "datum": "2026-10-12T09:10:00Z",
+   "wert": 14.4
+  },
+  "wasserstand": {
+   "datum": "2026-10-12T09:10:00Z",
+   "wert": 255.3
+  },
+  "wTemperatur": {
+   "datum": "2026-10-12T09:15:00Z",
+   "wert": 17.8
+  },
+  "wtMilli05": {
+   "datum": "2026-10-12T09:15:00Z",
+   "wert": 18
+  },
+  "wtMilli25": {
+   "datum": "2026-10-12T09:15:00Z",
+   "wert": 18
+  },
+  "windgeschwindigkeit": {
+   "datum": "2026-10-12T09:00:00Z",
+   "wert": 0.7
+  },
+  "windrichtung": {
+   "datum": "2026-10-12T09:00:00Z",
+   "wert": 190.5
+  },
+  "windboe": {
+   "datum": "2026-10-12T09:00:00Z",
+   "wert": 1.3
+  },
+  "seeArchiv": [
+   {
+    "datum": "2026-10-12T00:00:00",
+    "w": 255,
+    "wtHafen": 17.8,
+    "wtMilli05": 18,
+    "wtMilli25": 18,
+    "tag": 12,
+    "monat": 10,
+    "ZRBereich": "1864 - 2024",
+    "Min": 267,
+    "Mit": 347.81875,
+    "Max": 484,
+    "tagMonat": "12.10."
+   },
+   {
+    "datum": "2026-10-11T00:00:00",
+    "w": 256,
+    "wtHafen": 18,
+    "wtMilli05": 18.2,
+    "wtMilli25": 18.2,
+    "tag": 11,
+    "monat": 10,
+    "ZRBereich": "1864 - 2024",
+    "Min": 268,
+    "Mit": 349.4,
+    "Max": 489,
+    "tagMonat": "11.10."
+   }
+  ],
+  "history": null,
+  "nnw": {
+   "datum": "2006-02-14T23:00:00Z",
+   "wert": 231
+  },
+  "hhw": {
+   "datum": "1890-09-02T23:00:00Z",
+   "wert": 581
+  },
+  "flaechennR_1_BIS_8_ORDNG_TXT": "Bodensee",
+  "Hzbnr": "200337",
+  "Name": "Bregenz (Seepegel), 200337",
+  "rechtswert": -44116,
+  "hochwert": 263409,
+  "Flussgebiet": null,
+  "hoehe": 0,
+  "Betreiber": "Wasserwirtschaft Vorarlberg"
+ }
+]

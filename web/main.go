@@ -59,6 +59,11 @@ func main() {
 		sources.NewZurich(client),
 		sources.NewDatalakes(client),
 		sources.NewWiewarm(client),
+		sources.NewZurichCanton(client),
+		sources.NewThurgau(client),
+		sources.NewStGallen(client),
+		sources.NewVorarlberg(client),
+		sources.NewWTLive(client),
 	)
 	st.SetHydro(sources.NewHydro(client))
 	go st.Run(ctx, interval)

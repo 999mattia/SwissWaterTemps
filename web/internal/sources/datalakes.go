@@ -50,7 +50,8 @@ type datalakesSet struct {
 	lat, lon    float64
 }
 
-// Datasets with a live surface temperature. Positions are the buoys'.
+// Datasets with a live surface temperature (Buchillon and the Lugano probes
+// at 1 m). Positions are the buoys' and stations'.
 var datalakesSets = []datalakesSet{
 	{1264, "temperature", "temperature_qual", "Vierwaldstättersee – Kastanienbaum", "Vierwaldstättersee", 47.000, 8.330},
 	{448, "surfacetemp", "", "Genfersee – Pully (LéXPLORE)", "Genfersee", 46.500, 6.670},
@@ -60,6 +61,10 @@ var datalakesSets = []datalakesSet{
 	{1334, "surface_temp", "", "Lago di Lugano – Castagnola", "Lago di Lugano", 45.9993, 8.9803},
 	{1443, "surfacetemp", "", "Lago di Lugano – Figino", "Lago di Lugano", 45.9594, 8.8929},
 	{1333, "surface_temp", "", "Lago Maggiore – Porto Ronco", "Lago Maggiore", 46.144, 8.731},
+	{597, "wt1", "wt1_qual", "Genfersee – Buchillon", "Genfersee", 46.459, 6.399},
+	{1400, "temp", "temp_qual", "Lago di Lugano – Magliaso", "Lago di Lugano", 45.9812, 8.8955},
+	{1401, "temp", "temp_qual", "Lago di Lugano – Riva San Vitale", "Lago di Lugano", 45.9071, 8.9718},
+	{1402, "temp", "temp_qual", "Lago di Lugano – Vico Morcote", "Lago di Lugano", 45.9378, 8.9353},
 }
 
 // A dataset whose newest value is older than this is left out.
