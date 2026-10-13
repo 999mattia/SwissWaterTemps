@@ -12,7 +12,7 @@ const (
 )
 
 type Station struct {
-	// ID is unique across all sources, e.g. "bafu-2135" or "boot24-zurichsee".
+	// ID is unique across all sources, e.g. "bafu-2135" or "alplakes-thun".
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	WaterBody   string  `json:"waterBody,omitempty"`
@@ -29,13 +29,21 @@ type Station struct {
 	Change24h *float64 `json:"change24h,omitempty"`
 	// Hydro is flow and level at the BAFU gauge that measures the same water, if any.
 	Hydro *Hydro `json:"hydro,omitempty"`
+	// Modelled values are simulated, not measured; ModelError is the model's
+	// typical deviation from measurements at the surface, in °C.
+	Modelled   bool     `json:"modelled,omitempty"`
+	ModelError *float64 `json:"modelError,omitempty"`
 
 	// HydroKey is that gauge's BAFU station key, set by the source; the store
 	// attaches Hydro by it. For lakes it also identifies the lake.
 	HydroKey string `json:"-"`
-	// Fallback marks approximate values (boot24's lake table) that give way to
+	// Fallback marks approximate values (the Alplakes model) that give way to
 	// a fresh measured station on the same lake.
 	Fallback bool `json:"-"`
+	// Basin identifies the lake for that instead of HydroKey, where one gauge
+	// covers several basins (Zürichsee, Vierwaldstättersee, Lago di Lugano) or
+	// the lake has no gauge. It's the basin's Alplakes key, e.g. "upperzurich".
+	Basin string `json:"-"`
 
 	// Recent holds past values a source already knows (none of the current ones do),
 	// so history can be filled in without waiting for our own polling.

@@ -243,8 +243,16 @@ func (s *Store) persist(ctx context.Context, changed []*sourceState, now time.Ti
 }
 
 // measuredFor is how recent a measured lake value must be to replace the
-// fallback (boot24) value of the same lake.
+// fallback (model) value of the same lake.
 const measuredFor = 6 * time.Hour
+
+// lakeID identifies the lake (or basin) of a lake station for hiding fallbacks.
+func lakeID(stn station.Station) string {
+	if stn.Basin != "" {
+		return stn.Basin
+	}
+	return stn.HydroKey
+}
 
 func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	snap := station.Snapshot{
@@ -258,9 +266,9 @@ func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	now := s.now()
 	for _, st := range s.states {
 		for _, stn := range st.stations {
-			if !stn.Fallback && stn.Kind == station.Lake && stn.HydroKey != "" &&
+			if !stn.Fallback && stn.Kind == station.Lake && lakeID(stn) != "" &&
 				stn.MeasuredAt != nil && now.Sub(*stn.MeasuredAt) < measuredFor {
-				measured[stn.HydroKey] = true
+				measured[lakeID(stn)] = true
 			}
 		}
 	}
@@ -268,7 +276,7 @@ func (s *Store) build(updatedAt time.Time) station.Snapshot {
 	for _, st := range s.states {
 		snap.Sources = append(snap.Sources, st.status)
 		for _, stn := range st.stations {
-			if stn.Fallback && measured[stn.HydroKey] {
+			if stn.Fallback && measured[lakeID(stn)] {
 				continue
 			}
 			stn.Hydro = nil

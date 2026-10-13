@@ -48,23 +48,24 @@ type datalakesSet struct {
 	param, qual string // surface temperature and its quality flag (0 = ok), if any
 	name, water string
 	lat, lon    float64
+	basin       string // Alplakes basin key, where the lake has several (station.Basin)
 }
 
 // Datasets with a live surface temperature (Buchillon and the Lugano probes
 // at 1 m). Positions are the buoys' and stations'.
 var datalakesSets = []datalakesSet{
-	{1264, "temperature", "temperature_qual", "Vierwaldstättersee – Kastanienbaum", "Vierwaldstättersee", 47.000, 8.330},
-	{448, "surfacetemp", "", "Genfersee – Pully (LéXPLORE)", "Genfersee", 46.500, 6.670},
-	{956, "surfacetemp", "", "Murtensee – Seemitte", "Murtensee", 46.934, 7.077},
-	{1046, "surfacetemp", "", "Hallwilersee – Seemitte", "Hallwilersee", 47.2785, 8.2138},
-	{1074, "surface_temp", "surface_temp_qual", "Ägerisee – Seemitte", "Ägerisee", 47.1249, 8.6085},
-	{1334, "surface_temp", "", "Lago di Lugano – Castagnola", "Lago di Lugano", 45.9993, 8.9803},
-	{1443, "surfacetemp", "", "Lago di Lugano – Figino", "Lago di Lugano", 45.9594, 8.8929},
-	{1333, "surface_temp", "", "Lago Maggiore – Porto Ronco", "Lago Maggiore", 46.144, 8.731},
-	{597, "wt1", "wt1_qual", "Genfersee – Buchillon", "Genfersee", 46.459, 6.399},
-	{1400, "temp", "temp_qual", "Lago di Lugano – Magliaso", "Lago di Lugano", 45.9812, 8.8955},
-	{1401, "temp", "temp_qual", "Lago di Lugano – Riva San Vitale", "Lago di Lugano", 45.9071, 8.9718},
-	{1402, "temp", "temp_qual", "Lago di Lugano – Vico Morcote", "Lago di Lugano", 45.9378, 8.9353},
+	{1264, "temperature", "temperature_qual", "Vierwaldstättersee – Kastanienbaum", "Vierwaldstättersee", 47.000, 8.330, "lucernekreuztrichterandvitznauerbecken"},
+	{448, "surfacetemp", "", "Genfersee – Pully (LéXPLORE)", "Genfersee", 46.500, 6.670, ""},
+	{956, "surfacetemp", "", "Murtensee – Seemitte", "Murtensee", 46.934, 7.077, ""},
+	{1046, "surfacetemp", "", "Hallwilersee – Seemitte", "Hallwilersee", 47.2785, 8.2138, ""},
+	{1074, "surface_temp", "surface_temp_qual", "Ägerisee – Seemitte", "Ägerisee", 47.1249, 8.6085, ""},
+	{1334, "surface_temp", "", "Lago di Lugano – Castagnola", "Lago di Lugano", 45.9993, 8.9803, "upperlugano"},
+	{1443, "surfacetemp", "", "Lago di Lugano – Figino", "Lago di Lugano", 45.9594, 8.8929, "lowerlugano"},
+	{1333, "surface_temp", "", "Lago Maggiore – Porto Ronco", "Lago Maggiore", 46.144, 8.731, ""},
+	{597, "wt1", "wt1_qual", "Genfersee – Buchillon", "Genfersee", 46.459, 6.399, ""},
+	{1400, "temp", "temp_qual", "Lago di Lugano – Magliaso", "Lago di Lugano", 45.9812, 8.8955, "lowerlugano"},
+	{1401, "temp", "temp_qual", "Lago di Lugano – Riva San Vitale", "Lago di Lugano", 45.9071, 8.9718, "lowerlugano"},
+	{1402, "temp", "temp_qual", "Lago di Lugano – Vico Morcote", "Lago di Lugano", 45.9378, 8.9353, "lowerlugano"},
 }
 
 // A dataset whose newest value is older than this is left out.
@@ -156,7 +157,7 @@ func (d *Datalakes) fetchSet(ctx context.Context, set datalakesSet) (*station.St
 	return &station.Station{
 		ID: "datalakes-" + strconv.Itoa(set.id), Name: set.name, WaterBody: set.water, Kind: station.Lake,
 		Temperature: math.Round(last.Value*10) / 10, MeasuredAt: &last.Time, Lat: ptr(set.lat), Lon: ptr(set.lon),
-		Source: "datalakes", HydroKey: lakeGauge(set.water), Recent: hourly(points),
+		Source: "datalakes", HydroKey: lakeGauge(set.water), Basin: set.basin, Recent: hourly(points),
 	}, nil
 }
 

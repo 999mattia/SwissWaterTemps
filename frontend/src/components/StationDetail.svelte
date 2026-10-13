@@ -149,7 +149,7 @@
         {/if}
         {#if station.measuredAt}
           <div>
-            <dt>{tr.t('measured')}</dt>
+            <dt>{tr.t(station.modelled ? 'modelTime' : 'measured')}</dt>
             <dd><time datetime={station.measuredAt}>{tr.ago(station.measuredAt, now)}</time>
               {#if stale}<span class="badge">{tr.t('stale')}</span>{/if}</dd>
           </div>
@@ -172,6 +172,13 @@
       </dl>
     </div>
 
+    {#if station.modelled}
+      <p class="note">
+        {station.modelError != null
+          ? tr.t('modelledError', { error: tr.temp(station.modelError) })
+          : tr.t('modelledHint')}
+      </p>
+    {/if}
     {#if !station.measuredAt}
       <p class="note">{tr.t('noMeasuredTime', { source: source?.name ?? station.source })}</p>
     {/if}

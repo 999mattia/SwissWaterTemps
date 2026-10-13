@@ -44,6 +44,7 @@ const de = {
   installHint: 'Tipp: Über «Teilen» → «Zum Home-Bildschirm» als App installieren.',
   back: 'Zurück',
   measured: 'Messwert',
+  modelTime: 'Modellzeit',
   discharge: 'Abfluss',
   waterLevel: 'Pegel',
   masl: 'm ü. M.',
@@ -66,6 +67,9 @@ const de = {
   dismiss: 'Schliessen',
   temperature: 'Temperatur',
   noMeasuredTime: 'Ohne Messzeitpunkt – Richtwert von {source}',
+  modelled: 'Modell',
+  modelledHint: 'Modellwert von Eawag Alplakes, kein Messwert.',
+  modelledError: 'Modellwert von Eawag Alplakes, kein Messwert. An der Oberfläche weicht das Modell typischerweise um ±{error}° von Messungen ab.',
 };
 
 type Dict = typeof de;
@@ -111,6 +115,7 @@ const fr: Dict = {
   installHint: "Astuce : « Partager » → « Sur l'écran d'accueil » pour l'installer comme app.",
   back: 'Retour',
   measured: 'Mesure',
+  modelTime: 'Heure du modèle',
   discharge: 'Débit',
   waterLevel: 'Niveau',
   masl: 'm',
@@ -133,6 +138,9 @@ const fr: Dict = {
   dismiss: 'Fermer',
   temperature: 'Température',
   noMeasuredTime: 'Sans heure de mesure – valeur indicative de {source}',
+  modelled: 'Modèle',
+  modelledHint: "Valeur du modèle Alplakes de l'Eawag, pas une mesure.",
+  modelledError: "Valeur du modèle Alplakes de l'Eawag, pas une mesure. En surface, le modèle s'écarte typiquement de ±{error}° des mesures.",
 };
 
 const en: Dict = {
@@ -176,6 +184,7 @@ const en: Dict = {
   installHint: 'Tip: use “Share” → “Add to Home Screen” to install it as an app.',
   back: 'Back',
   measured: 'Measurement',
+  modelTime: 'Model time',
   discharge: 'Flow',
   waterLevel: 'Water level',
   masl: 'm a.s.l.',
@@ -198,6 +207,9 @@ const en: Dict = {
   dismiss: 'Close',
   temperature: 'Temperature',
   noMeasuredTime: 'No measurement time – approximate value from {source}',
+  modelled: 'Model',
+  modelledHint: 'Value from Eawag’s Alplakes model, not a measurement.',
+  modelledError: 'Value from Eawag’s Alplakes model, not a measurement. At the surface the model typically differs from measurements by ±{error}°.',
 };
 
 const dicts: Record<Lang, Dict> = { de, fr, en };

@@ -281,12 +281,25 @@ type SourceState struct {
 	Stations []station.Station
 }
 
+// savedStation adds the fields a station keeps out of the API, so restored
+// stations still attach flow/level and hide fallbacks before the first refresh.
+type savedStation struct {
+	station.Station
+	HydroKey string `json:"hydroKey,omitempty"`
+	Fallback bool   `json:"fallback,omitempty"`
+	Basin    string `json:"basin,omitempty"`
+}
+
 func (h *DB) SaveSource(ctx context.Context, state SourceState) error {
 	status, err := json.Marshal(state.Status)
 	if err != nil {
 		return err
 	}
-	stations, err := json.Marshal(state.Stations)
+	saved := make([]savedStation, len(state.Stations))
+	for i, s := range state.Stations {
+		saved[i] = savedStation{s, s.HydroKey, s.Fallback, s.Basin}
+	}
+	stations, err := json.Marshal(saved)
 	if err != nil {
 		return err
 	}
@@ -311,8 +324,13 @@ func (h *DB) LoadSources(ctx context.Context) (map[string]SourceState, error) {
 			return nil, err
 		}
 		var st SourceState
-		if json.Unmarshal([]byte(status), &st.Status) != nil || json.Unmarshal([]byte(stations), &st.Stations) != nil {
+		var saved []savedStation
+		if json.Unmarshal([]byte(status), &st.Status) != nil || json.Unmarshal([]byte(stations), &saved) != nil {
 			continue // unreadable row from an older version; it is rewritten on the next refresh
+		}
+		for _, s := range saved {
+			s.Station.HydroKey, s.Station.Fallback, s.Station.Basin = s.HydroKey, s.Fallback, s.Basin
+			st.Stations = append(st.Stations, s.Station)
 		}
 		out[id] = st
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
+	"sort"
 	"testing"
 	"time"
 
@@ -108,14 +110,19 @@ func TestHydroIsAttachedByKeyAndKeptOnFailure(t *testing.T) {
 func TestFallbackLakeHiddenByFreshMeasurement(t *testing.T) {
 	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 	at := func(d time.Duration) *time.Time { v := now.Add(d); return &v }
-	boot24 := &fakeFetcher{id: "boot24", stations: []station.Station{
-		{ID: "b-zh", Name: "Zürichsee", Kind: station.Lake, HydroKey: "2209", Fallback: true},
-		{ID: "b-biel", Name: "Bielersee", Kind: station.Lake, HydroKey: "2208", Fallback: true},
+	model := &fakeFetcher{id: "alplakes", stations: []station.Station{
+		{ID: "a-zh", Name: "Zürichsee", Kind: station.Lake, HydroKey: "2209", Basin: "lowerzurich", Fallback: true},
+		{ID: "a-zh-ober", Name: "Zürichsee (Obersee)", Kind: station.Lake, HydroKey: "2209", Basin: "upperzurich", Fallback: true},
+		{ID: "a-biel", Name: "Bielersee", Kind: station.Lake, HydroKey: "2208", Fallback: true},
+		{ID: "a-thun", Name: "Thunersee", Kind: station.Lake, HydroKey: "2093", Fallback: true},
+		{ID: "a-turler", Name: "Türlersee", Kind: station.Lake, Basin: "turlersee", Fallback: true},
 	}}
-	measured := &fakeFetcher{id: "wapo", stations: []station.Station{
-		{ID: "m-zh", Name: "Zürichsee – Tiefenbrunnen", Kind: station.Lake, HydroKey: "2209", MeasuredAt: at(-time.Hour)},
+	measured := &fakeFetcher{id: "measured", stations: []station.Station{
+		{ID: "m-zh", Name: "Zürichsee – Tiefenbrunnen", Kind: station.Lake, HydroKey: "2209", Basin: "lowerzurich", MeasuredAt: at(-time.Hour)},
+		{ID: "m-thun", Name: "Thunersee – Strandbad", Kind: station.Lake, HydroKey: "2093", MeasuredAt: at(-time.Hour)},
+		{ID: "m-turler", Name: "Türlersee", Kind: station.Lake, Basin: "turlersee", MeasuredAt: at(-time.Hour)},
 	}}
-	s := New(nil, boot24, measured)
+	s := New(nil, model, measured)
 	s.now = func() time.Time { return now }
 	s.Refresh(context.Background())
 
@@ -123,17 +130,23 @@ func TestFallbackLakeHiddenByFreshMeasurement(t *testing.T) {
 		for _, st := range s.Snapshot().Stations {
 			out = append(out, st.ID)
 		}
+		sort.Strings(out)
 		return out
 	}
-	if got := ids(); len(got) != 2 || got[0] != "b-biel" || got[1] != "m-zh" {
-		t.Errorf("fresh measurement should hide boot24's Zürichsee: %v", got)
+	// Hidden: the Zürichsee basin with a measurement (not the Obersee), Thunersee
+	// by its gauge, Türlersee by its basin.
+	want := []string{"a-biel", "a-zh-ober", "m-thun", "m-turler", "m-zh"}
+	if got := ids(); !slices.Equal(got, want) {
+		t.Errorf("stations = %v, want %v", got, want)
 	}
 
-	// Once the measurement is old, boot24's value comes back next to it.
-	measured.stations[0].MeasuredAt = at(-7 * time.Hour)
+	// Once the measurements are old, the model values come back next to them.
+	for i := range measured.stations {
+		measured.stations[i].MeasuredAt = at(-7 * time.Hour)
+	}
 	s.Refresh(context.Background())
-	if got := ids(); len(got) != 3 {
-		t.Errorf("stale measurement should not hide the fallback: %v", got)
+	if got := ids(); len(got) != 8 {
+		t.Errorf("stale measurements should not hide the model: %v", got)
 	}
 }
 

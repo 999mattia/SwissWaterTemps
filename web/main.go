@@ -54,7 +54,6 @@ func main() {
 	client := sources.NewHTTPClient()
 	st := store.New(hist,
 		sources.NewBAFU(client),
-		sources.NewBoot24(client),
 		sources.NewHikaWetter(client),
 		sources.NewZurich(client),
 		sources.NewDatalakes(client),
@@ -64,6 +63,7 @@ func main() {
 		sources.NewStGallen(client),
 		sources.NewVorarlberg(client),
 		sources.NewWTLive(client),
+		sources.NewAlplakes(client),
 	)
 	st.SetHydro(sources.NewHydro(client))
 	go st.Run(ctx, interval)

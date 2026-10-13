@@ -9,8 +9,10 @@ Add to Home Screen**.
 -   Lakes and rivers with the time of each measurement, the 24 h min/max range and
     the change over the last 24 hours
 -   Measured lake temperatures (Zürich water police, Eawag buoys, Strandbad
-    Thun, Bodensee at Bregenz and Altnau, Bielersee sensors, Türlersee);
-    boot24's approximate values fill in for the other lakes
+    Thun, Bodensee at Bregenz and Altnau, Bielersee sensors, Türlersee)
+-   Modelled surface temperatures for 131 lakes in Switzerland and around the
+    Alps from Eawag's Alplakes, marked "Modell" with the model's typical
+    error; a lake's model value gives way to a fresh measurement
 -   Rivers and streams from BAFU plus the cantons of Zürich, Thurgau,
     Schaffhausen and St. Gallen
 -   A page per station with a 7-day, 30-day or 1-year chart of temperature, and
@@ -30,7 +32,7 @@ Add to Home Screen**.
 ```
 frontend/   Svelte 5 + Vite single-page app and PWA (service worker, manifest, icons)
 web/        Go server; embeds the built frontend into a single binary
-  internal/sources/  one fetcher per data source (BAFU, boot24, HiKa Wetter,
+  internal/sources/  one fetcher per data source (BAFU, Alplakes, HiKa Wetter,
                      Wasserschutzpolizei Zürich, Eawag Datalakes, wiewarm.ch,
                      canton of Zürich, Thurgau/Schaffhausen, St. Gallen,
                      Vorarlberg, wassertemperatur.live), plus BAFU's
@@ -51,7 +53,7 @@ source as not OK.
 | Source | What | Notes |
 | --- | --- | --- |
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-temperatur) | River temperatures, measured | GeoJSON, updated about every 10 minutes |
-| [boot24](https://www.boot24.ch/chde/service/temperaturen/) | Lake temperatures | Scraped from the HTML table; approximate lake positions come from `web/internal/sources/lakes.go` |
+| [Alplakes (Eawag)](https://www.alplakes.eawag.ch) | Modelled surface temperature of 131 lakes (Simstrat 1D model, run daily) | JSON API, refreshed every 3 hours one lake at a time (the API only allows short bursts), in the background. Names, positions and the model's surface error per lake come from Eawag's [lake parameters](https://github.com/Eawag-AppliedSystemAnalysis/operational-simstrat/blob/master/static/lake_parameters.json), in `alplakes_lakes.go` |
 | [HiKa Wetter](https://hikawetter.ch) | Wohlensee, measured | JSON |
 | [Wasserschutzpolizei Zürich](https://data.stadt-zuerich.ch/dataset/sid_wapo_wetterstationen) | Zürichsee at Tiefenbrunnen and Mythenquai, measured every 10 minutes (published with about 2 hours' delay) | Open data via the tecdottir API; the last 24 h backfill the history |
 | [Eawag Datalakes](https://www.datalakes-eawag.ch) | Surface temperature of research buoys and stations: Genfersee (Pully, Buchillon), Vierwaldstättersee, Murtensee, Hallwilersee, Ägerisee, Lago di Lugano (5), Lago Maggiore | One JSON file per dataset and day; values with a quality flag are skipped. The datasets are listed in `datalakes.go` |
@@ -63,10 +65,13 @@ source as not OK.
 | [wassertemperatur.live](https://wassertemperatur.live) | Bielersee at Strandbad Biel and Vingelz, battery sensors sending hourly | One page per sensor with only the current value, no time (`wtlive.go`) |
 | [BAFU](https://www.hydrodaten.admin.ch/de/seen-und-fluesse/messstationen-zustand) | Flow, water level and danger level | GeoJSON; attached to the temperature stations by station key (lakes via `lakeGauges` in `lakes.go`). If it fails, the last readings stay and temperatures are unaffected |
 
-A lake's boot24 entry is hidden while a measured station on the same lake
-(matched by the lake's BAFU level gauge) has a value from the last 6 hours, and
-comes back when the measurement stops. Stations without a measurement time
-(wassertemperatur.live, HiKa Wetter) don't hide it.
+A lake's Alplakes value is hidden while a measured station on the same lake
+has a value from the last 6 hours, and comes back when the measurement stops.
+Lakes are matched by their BAFU level gauge, or by basin where one gauge covers
+several (Zürichsee and Obersee, the four basins of the Vierwaldstättersee, the
+two of the Lago di Lugano) or the lake has none (Türlersee, Bommer Weiher).
+Stations without a measurement time (wassertemperatur.live, HiKa Wetter) don't
+hide it.
 
 ### History
 
@@ -181,8 +186,8 @@ The app icons in `frontend/public` are generated from `favicon.svg` with
 ## Disclaimer
 
 The measurements belong to their providers: the Federal Office for the
-Environment BAFU (temperature, flow, level), boot24, HiKa Wetter, the
-Wasserschutzpolizei of the city of Zürich, Eawag (Datalakes), wiewarm.ch, the
+Environment BAFU (temperature, flow, level), Eawag (Alplakes, Datalakes),
+HiKa Wetter, the Wasserschutzpolizei of the city of Zürich, wiewarm.ch, the
 cantons of Zürich, Thurgau, Schaffhausen and St. Gallen, the state of
 Vorarlberg and wassertemperatur.live;
 see the table above for links. Map tiles © swisstopo.

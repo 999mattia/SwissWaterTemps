@@ -33,6 +33,7 @@ type Wiski struct {
 type wiskiStation struct {
 	name, water string
 	kind        station.Kind
+	basin       string // Alplakes key of a lake without a BAFU gauge
 }
 
 // NewThurgau reads the portal of the cantons of Thurgau and Schaffhausen:
@@ -43,12 +44,12 @@ func NewThurgau(client *http.Client) *Wiski {
 		id: "tg", name: "Hydrodaten Thurgau/Schaffhausen", site: "https://www.hydrodaten.tg.ch",
 		bafuPrefix: "U", placeAfterSpace: true,
 		stations: map[string]wiskiStation{
-			"M1090": {"Bodensee – Altnau", "Bodensee", station.Lake},
-			"S2001": {"Bommer Weiher", "Bommer Weiher", station.Lake},
-			"F1042": {"Salmsacher Aach - Hefenhofen", "Salmsacher Aach", station.River},
-			"00040": {"Rhein - Rheinfall oben", "Rhein", station.River},
-			"00020": {"Fulach - Morgerenweiher", "Fulach", station.River},
-			"00032": {"Durach - Merishausen", "Durach", station.River},
+			"M1090": {"Bodensee – Altnau", "Bodensee", station.Lake, ""},
+			"S2001": {"Bommer Weiher", "Bommer Weiher", station.Lake, "obererbommerweiher"},
+			"F1042": {"Salmsacher Aach - Hefenhofen", "Salmsacher Aach", station.River, ""},
+			"00040": {"Rhein - Rheinfall oben", "Rhein", station.River, ""},
+			"00020": {"Fulach - Morgerenweiher", "Fulach", station.River, ""},
+			"00032": {"Durach - Merishausen", "Durach", station.River, ""},
 		},
 	}
 }
@@ -114,7 +115,7 @@ func (w *Wiski) parse(body []byte, now time.Time) ([]station.Station, error) {
 			s.Lat, s.Lon = r.Lat.v, r.Lon.v
 		}
 		if o, ok := w.stations[r.No]; ok {
-			s.Name, s.WaterBody, s.Kind = o.name, o.water, o.kind
+			s.Name, s.WaterBody, s.Kind, s.Basin = o.name, o.water, o.kind, o.basin
 		} else {
 			s.Name, s.WaterBody = wiskiName(r.Name, r.River, w.placeAfterSpace)
 		}

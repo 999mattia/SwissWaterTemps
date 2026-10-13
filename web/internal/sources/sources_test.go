@@ -123,48 +123,6 @@ func TestParseBAFUErrors(t *testing.T) {
 	}
 }
 
-func TestParseBoot24(t *testing.T) {
-	stations, err := parseBoot24(fixture(t, "boot24.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(stations) != 3 {
-		t.Fatalf("got %d stations, want 3 (row without temperature skipped)", len(stations))
-	}
-
-	zh := stations[0]
-	if zh.ID != "boot24-zurichsee" || zh.Temperature != 21.5 || zh.Kind != station.Lake {
-		t.Errorf("unexpected station: %+v", zh)
-	}
-	if zh.MeasuredAt == nil || zh.MeasuredAt.Hour() != 8 {
-		t.Errorf("MeasuredAt = %v", zh.MeasuredAt)
-	}
-	if zh.Lat == nil || !near(*zh.Lat, 47.25) {
-		t.Errorf("Zürichsee should have coordinates, got %v", zh.Lat)
-	}
-
-	untersee := stations[1]
-	if untersee.Temperature != 19.8 {
-		t.Errorf("comma decimal not parsed: %v", untersee.Temperature)
-	}
-	if untersee.Lat == nil || !near(*untersee.Lat, 47.68) {
-		t.Errorf("Untersee should match the more specific entry, got %v", untersee.Lat)
-	}
-	if zh.HydroKey != "2209" || untersee.HydroKey != "2043" || stations[2].HydroKey != "" {
-		t.Errorf("lake gauges = %q %q %q", zh.HydroKey, untersee.HydroKey, stations[2].HydroKey)
-	}
-
-	if stations[2].Lat != nil || stations[2].MeasuredAt != nil {
-		t.Errorf("unknown lake should have no coordinates or date: %+v", stations[2])
-	}
-}
-
-func TestParseBoot24ChangedLayout(t *testing.T) {
-	if _, err := parseBoot24([]byte(`<html><body><table></table></body></html>`)); err == nil {
-		t.Error("expected an error when no rows are found")
-	}
-}
-
 func TestParseHikaWetter(t *testing.T) {
 	stations, err := parseHikaWetter(fixture(t, "hikawetter.json"))
 	if err != nil {
@@ -193,7 +151,6 @@ func TestFetchHTTPErrors(t *testing.T) {
 
 	fetchers := []Fetcher{
 		&BAFU{Client: srv.Client(), DataURL: srv.URL},
-		&Boot24{Client: srv.Client(), PageURL: srv.URL},
 		&HikaWetter{Client: srv.Client(), DataURL: srv.URL},
 	}
 	for _, f := range fetchers {

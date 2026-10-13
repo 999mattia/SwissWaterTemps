@@ -38,6 +38,7 @@
     </h3>
     <p class="meta">
       <span class="kind">{tr.t(station.kind)}</span>
+      {#if station.modelled}<span class="model" title={tr.t('modelledHint')}>{tr.t('modelled')}</span>{/if}
       {#if showWaterBody}<span>· {station.waterBody}</span>{/if}
       {#if distance != null}<span>· {tr.t('kmAway', { km: tr.km(distance) })}</span>{/if}
     </p>
@@ -157,6 +158,16 @@
   .badge {
     color: var(--warning);
     font-weight: 600;
+  }
+
+  .model {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background: var(--chip);
   }
 
   .temp {

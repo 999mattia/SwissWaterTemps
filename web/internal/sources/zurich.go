@@ -78,7 +78,7 @@ func parseZurich(body []byte) (station.Station, error) {
 		return station.Station{}, fmt.Errorf("decode: %w", err)
 	}
 
-	s := station.Station{WaterBody: "Zürichsee", Kind: station.Lake, Source: "wapo", HydroKey: lakeGauge("Zürichsee")}
+	s := station.Station{WaterBody: "Zürichsee", Kind: station.Lake, Source: "wapo", HydroKey: lakeGauge("Zürichsee"), Basin: "lowerzurich"}
 	// Newest first; Recent is stored oldest first like every other series.
 	for i := len(res.Result) - 1; i >= 0; i-- {
 		v := res.Result[i].Values

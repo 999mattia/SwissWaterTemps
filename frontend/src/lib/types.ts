@@ -16,6 +16,10 @@ export interface Station {
   change24h?: number;
   /** Flow and level at the BAFU gauge on the same water, if there is one. */
   hydro?: Hydro;
+  /** Simulated by a lake model (Alplakes), not measured. */
+  modelled?: boolean;
+  /** The model's typical deviation from measurements at the surface, in °C. */
+  modelError?: number;
 }
 
 export interface Hydro {

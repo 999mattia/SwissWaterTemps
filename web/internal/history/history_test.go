@@ -119,7 +119,7 @@ func TestSourcesRoundTrip(t *testing.T) {
 
 	state := SourceState{
 		Status:   station.Source{ID: "bafu", Name: "BAFU", OK: true, LastSuccess: at(t0)},
-		Stations: []station.Station{{ID: "a", Name: "Aare", Temperature: 18}},
+		Stations: []station.Station{{ID: "a", Name: "Aare", Temperature: 18, HydroKey: "2209", Fallback: true, Basin: "upperzurich"}},
 	}
 	if err := db.SaveSource(ctx, state); err != nil {
 		t.Fatal(err)
@@ -136,6 +136,10 @@ func TestSourcesRoundTrip(t *testing.T) {
 	got := loaded["bafu"]
 	if !got.Status.OK || !got.Status.LastSuccess.Equal(t0) || len(got.Stations) != 1 || got.Stations[0].Temperature != 19 {
 		t.Errorf("loaded %+v", got)
+	}
+	// Fields kept out of the API survive too.
+	if s := got.Stations[0]; s.HydroKey != "2209" || !s.Fallback || s.Basin != "upperzurich" {
+		t.Errorf("internal fields lost: %+v", s)
 	}
 }
 
