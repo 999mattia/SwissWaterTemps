@@ -15,6 +15,12 @@ import (
 	"github.com/999mattia/SwissWaterTemps/internal/station"
 )
 
+// Tests simulate failing upstreams; don't wait before get's retry.
+func TestMain(m *testing.M) {
+	retryDelay = 0
+	os.Exit(m.Run())
+}
+
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := os.ReadFile("testdata/" + name)
@@ -538,5 +544,36 @@ func TestWTLivePartialFailure(t *testing.T) {
 	}
 	if len(got) != len(wtliveSensors)-1 {
 		t.Errorf("got %d stations, want %d", len(got), len(wtliveSensors)-1)
+	}
+}
+
+func TestGetRetriesTransientFailure(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		fmt.Fprint(w, "ok")
+	}))
+	defer srv.Close()
+
+	body, err := get(context.Background(), srv.Client(), srv.URL)
+	if err != nil || string(body) != "ok" || calls != 2 {
+		t.Fatalf("body %q, err %v, calls %d; want ok after one retry", body, err, calls)
+	}
+}
+
+func TestGetDoesNotRetryNotFound(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	if _, err := get(context.Background(), srv.Client(), srv.URL); !isNotFound(err) || calls != 1 {
+		t.Fatalf("err %v, calls %d; want a 404 without retry", err, calls)
 	}
 }

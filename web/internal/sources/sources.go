@@ -43,7 +43,28 @@ func NewHTTPClient() *http.Client {
 	return &http.Client{Timeout: 20 * time.Second}
 }
 
+// retryDelay is the pause before get's single retry.
+var retryDelay = 5 * time.Second
+
+// get fetches url. A transient failure (network error such as a TLS handshake
+// timeout, or a 502/503/504) is retried once after a short pause: some portals
+// occasionally don't answer in time, and failing the whole refresh for that
+// would mark the source as failing for ten minutes.
 func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
+	body, err := getOnce(ctx, client, url)
+	if err == nil || !transient(err) || ctx.Err() != nil {
+		return body, err
+	}
+	slog.Info("retrying source request", "url", url, "error", err)
+	select {
+	case <-ctx.Done():
+		return nil, err
+	case <-time.After(retryDelay):
+	}
+	return getOnce(ctx, client, url)
+}
+
+func getOnce(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -60,6 +81,21 @@ func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 		return nil, &statusError{url: url, status: res.Status, code: res.StatusCode}
 	}
 	return io.ReadAll(io.LimitReader(res.Body, maxBody))
+}
+
+// transient reports whether a request is worth retrying: any error that isn't
+// an HTTP status, or a gateway status. Other statuses (404, 429, ...) won't
+// change a few seconds later.
+func transient(err error) bool {
+	var se *statusError
+	if !errors.As(err, &se) {
+		return true
+	}
+	switch se.code {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return false
 }
 
 // partialError reports the failures of a source made of several independent
